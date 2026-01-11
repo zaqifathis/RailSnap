@@ -1,11 +1,87 @@
+import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid, GizmoHelper, GizmoViewport, Sphere } from '@react-three/drei';
-import { DUPLO_STUD } from '../../utils/constants';
+import { OrbitControls, Grid, GizmoHelper, GizmoViewport, Sphere, Plane } from '@react-three/drei';
+import { DUPLO_STUD, STRAIGHT_LENGTH,CURVE_ANGLE, CURVE_RADIUS } from '../../utils/constants';
 import Track from '../tracks/Track';
+import { useState } from 'react';
 
-const radius = DUPLO_STUD * 10;
+const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
+  const [ghostState, setGhostState] = useState({ pos: [0, 0, 0], rot: 0 });
+  const SNAP_THRESHOLD = 30;
 
-const Scene = () => {
+  const getTrackEndInfo = (track) => {
+    const isStraight = track.type === 'STRAIGHT';
+    const angle = isStraight ? 0 : (track.isLeft ? -CURVE_ANGLE : CURVE_ANGLE);
+    
+    let localEnd;
+    if (isStraight) {
+      localEnd = new THREE.Vector3(0, 0, STRAIGHT_LENGTH);
+    } else {
+      const direction = track.isLeft ? -1 : 1;
+      localEnd = new THREE.Vector3(
+        (CURVE_RADIUS - Math.cos(CURVE_ANGLE) * CURVE_RADIUS) * direction,
+        0,
+        Math.sin(CURVE_ANGLE) * CURVE_RADIUS
+      );
+    }
+
+    // Apply rotation and position to find world end
+    const worldEnd = localEnd
+      .applyAxisAngle(new THREE.Vector3(0, 1, 0), track.rotation || 0)
+      .add(new THREE.Vector3(...track.position));
+    
+    const exitRotation = (track.rotation || 0) + angle;
+    return { pos: [worldEnd.x, worldEnd.y, worldEnd.z], rot: exitRotation };
+  };
+
+  const handlePointerMove = (e) => {
+    if (!activeTool) return;
+
+    let snapTarget = null;
+    const currentMouse = e.point;
+
+    for (const track of tracks) {
+      const endInfo = getTrackEndInfo(track);
+      const dist = currentMouse.distanceTo(new THREE.Vector3(...endInfo.pos));
+      
+      if (dist < SNAP_THRESHOLD) {
+        snapTarget = endInfo;
+        break;
+      }
+    }
+
+    if (snapTarget) {
+      setGhostState({ pos: snapTarget.pos, rot: snapTarget.rot });
+    } else {
+      setGhostState({ pos: [e.point.x, 0, e.point.z], rot: 0 });
+    }
+  };
+
+  return (
+    <>
+      <Plane 
+        args={[10000, 10000]} 
+        rotation={[-Math.PI / 2, 0, 0]} 
+        onPointerMove={handlePointerMove}
+        onClick={() => activeTool && onPlaceTrack(activeTool, ghostState.pos, ghostState.rot)}
+      >
+        <meshBasicMaterial transparent opacity={0} />
+      </Plane>
+
+      {activeTool && (
+        <group position={ghostState.pos} rotation={[0, ghostState.rot, 0]}>
+          <Track 
+            type={activeTool === 'STRAIGHT' ? 'STRAIGHT' : 'CURVED'} 
+            isLeft={activeTool === 'CURVE_LEFT'} 
+            isGhost 
+          />
+        </group>
+      )}
+    </>
+  );
+};
+
+const Scene = ({ activeTool, tracks, onPlaceTrack }) => {
   return (
     <Canvas 
         shadows
@@ -34,6 +110,18 @@ const Scene = () => {
             sectionThickness={1.5}
             position={[0, -0.01, 0]}   // Tiny offset to prevent flickering with tracks
         />
+      
+      {tracks && tracks.map(track => (
+        <group key={track.id} position={track.position} rotation={[0, track.rotation || 0, 0]}>
+          <Track type={track.type} isLeft={track.isLeft} />
+        </group>
+      ))}
+
+      <InteractionHandler 
+        activeTool={activeTool} 
+        tracks={tracks} 
+        onPlaceTrack={onPlaceTrack} 
+      />
         
       {/* Helper to know 0.0.0 pos */}
       <Sphere args={[4, 32, 32]}>

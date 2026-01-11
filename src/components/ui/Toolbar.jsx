@@ -3,10 +3,9 @@ import React, { useState } from 'react';
 const borderRad = '50px';
 const selectedColor = '#cfb912'
 
-const Toolbar = ({ activeTool, onSelectTool }) => {
+const Toolbar = ({ onSelectTool }) => {
   const [hovered, setHovered] = useState(null);
 
-  // Configuration for our track buttons
   const tools = [
     { id: 'STRAIGHT', label: 'Straight', color: selectedColor },
     { id: 'CURVE_LEFT', label: 'Curve Left', color: selectedColor },
@@ -14,7 +13,6 @@ const Toolbar = ({ activeTool, onSelectTool }) => {
   ];
 
   const getButtonStyle = (id, baseColor, type = 'track') => {
-    const isActive = activeTool === id;
     const isHovered = hovered === id;
 
     return {
@@ -22,7 +20,6 @@ const Toolbar = ({ activeTool, onSelectTool }) => {
       margin: '0 5px',
       borderRadius: borderRad,
       border: 'none',
-      // If active: use its specific color. If hovered: lighten. Else: grey/base.
       backgroundColor: isHovered ? selectedColor : (type === 'action' ? baseColor : '#999999'),
       color: 'white',
       cursor: 'pointer',
