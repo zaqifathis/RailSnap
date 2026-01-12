@@ -6,8 +6,8 @@ import Track from '../tracks/Track';
 import { useState } from 'react';
 
 const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
-  const [ghostState, setGhostState] = useState({ pos: [0, 0, 0], rot: 0 });
-  const SNAP_THRESHOLD = 30;
+  const [ghostState, setGhostState] = useState({ pos: [0, 0, 0], rot: 0, isOccupied: false, isSnapped: false });
+  const SNAP_THRESHOLD = 50;
 
   const getTrackEndInfo = (track) => {
     const isStraight = track.type === 'STRAIGHT';
@@ -31,7 +31,15 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
       .add(new THREE.Vector3(...track.position));
     
     const exitRotation = (track.rotation || 0) + angle;
-    return { pos: [worldEnd.x, worldEnd.y, worldEnd.z], rot: exitRotation };
+
+    // OCCUPATION CHECK
+    // Check if any existing track's start position is already at this end point
+    const isOccupied = tracks.some(t => {
+      const startPos = new THREE.Vector3(...t.position);
+      return startPos.distanceTo(worldEnd) < 5; // 5mm tolerance
+    });
+
+    return { pos: [worldEnd.x, worldEnd.y, worldEnd.z], rot: exitRotation, isOccupied };
   };
 
   const handlePointerMove = (e) => {
@@ -51,9 +59,20 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
     }
 
     if (snapTarget) {
-      setGhostState({ pos: snapTarget.pos, rot: snapTarget.rot });
+      setGhostState({ 
+        pos: snapTarget.pos, 
+        rot: snapTarget.rot, 
+        isOccupied: 
+        snapTarget.isOccupied, 
+        isSnapped: true 
+      });
     } else {
-      setGhostState({ pos: [e.point.x, 0, e.point.z], rot: 0 });
+      setGhostState({ 
+        pos: [e.point.x, 0, e.point.z], 
+        rot: 0, 
+        isOccupied: false, 
+        isSnapped: false
+      });
     }
   };
 
@@ -63,7 +82,16 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
         args={[10000, 10000]} 
         rotation={[-Math.PI / 2, 0, 0]} 
         onPointerMove={handlePointerMove}
-        onClick={() => activeTool && onPlaceTrack(activeTool, ghostState.pos, ghostState.rot)}
+        onClick={() => {
+          // RULE: Allow placement anywhere if first track. 
+          // Otherwise, must be snapped and NOT occupied.
+          const isFirstTrack = tracks.length === 0;
+          const canPlace = isFirstTrack || (ghostState.isSnapped && !ghostState.isOccupied);
+
+          if (activeTool && canPlace) {
+            onPlaceTrack(activeTool, ghostState.pos, ghostState.rot);
+          }
+        }}
       >
         <meshBasicMaterial transparent opacity={0} />
       </Plane>
@@ -73,7 +101,9 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
           <Track 
             type={activeTool === 'STRAIGHT' ? 'STRAIGHT' : 'CURVED'} 
             isLeft={activeTool === 'CURVE_LEFT'} 
-            isGhost 
+            isGhost
+            isOccupied={ghostState.isOccupied}
+            isSnapped={ghostState.isSnapped}
           />
         </group>
       )}
