@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { STRAIGHT_LENGTH, CURVE_RADIUS, CURVE_ANGLE } from './utils/constants';
 import { useState, useEffect } from 'react';
 import Scene from './components/Scene';
-import Toolbar from './components/Toolbar';
+import Toolbar from './components/ui/Toolbar';
+import TrackCounter from './components/UI/TrackCounter';
 import { generateUUID } from 'three/src/math/MathUtils.js';
 
 const isValidTrackData = (data) => {
@@ -145,6 +146,7 @@ function App() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+      <TrackCounter tracks={tracks} />
       <Toolbar 
         onSelectTool={setActiveTool} 
         onSave={saveTracks} 
