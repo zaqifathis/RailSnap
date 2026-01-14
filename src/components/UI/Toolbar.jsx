@@ -1,99 +1,122 @@
 import { useState } from 'react';
 import { glassStyle } from './glassStyle';
+import { StraightIcon, CurveIcon, YIcon, XIcon, ActionIcon } from './Icons';
 
-const selectedColor = '#cfb912'
-const buttonColor = 'rgba(153, 153, 153, 0.4)'
+// UI Colors
+const activeTrackColor = '#0ceda2'; // Vibrant green for active track
+const idleTrackColor = 'rgba(177, 174, 4, 0.89)'; // Your yellow/gold
+const utilityColor = 'rgba(186, 186, 186, 0.89)'; // Grey for actions
+const iconColor = '#222222'; // Dark color for icons
 
-const Toolbar = ({ onSelectTool, onSave, onLoad, onReset }) => {
+const Toolbar = ({ activeTool, onSelectTool, onSave, onLoad, onReset }) => {
   const [hovered, setHovered] = useState(null);
 
   const tools = [
-    { id: 'STRAIGHT', label: 'Straight', color: selectedColor },
-    { id: 'CURVED', label: 'Curve', color: selectedColor }
+    { id: 'STRAIGHT', label: 'Straight Track', icon: <StraightIcon /> },
+    { id: 'CURVED', label: 'Curve Track', icon: <CurveIcon /> },
+    { id: 'Y_TRACK', label: 'Y-Switch', icon: <YIcon /> },
+    { id: 'X_TRACK', label: 'X-Crossing', icon: <XIcon /> }
   ];
 
-  const toolbarContainer = {
-    ...glassStyle,
+  // The Main Parent that centers everything
+  const masterWrapper = {
     position: 'absolute',
     bottom: '30px',
     left: '50%',
     transform: 'translateX(-50%)',
-    padding: '15px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '24px', // Space between the two glass boundaries
+    userSelect: 'none',
+    zIndex: 1000
   };
 
-  const getButtonStyle = (id, baseColor, type = 'track') => {
+  const groupContainer = {
+    ...glassStyle,
+    padding: '8px 25px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  };
+
+  const getButtonStyle = (id, type = 'track') => {
     const isHovered = hovered === id;
+    const isActive = activeTool === id;
+
+    // Track buttons use yellow (idle) or green (active)
+    // Action buttons use grey
+    let bgColor = type === 'action' ? utilityColor : idleTrackColor;
+    if (isActive || isHovered) bgColor = activeTrackColor;
 
     return {
-      padding: '5px 20px',
-      margin: '0 5px',
-      borderRadius: glassStyle.borderRadius,
+      width: '44px',
+      height: '44px',
+      borderRadius: '15px',
       border: 'none',
       outline: 'none',
-      backgroundColor: isHovered ? selectedColor : (type === 'action' ? baseColor : buttonColor),
-      color: 'white',
+      backgroundColor: bgColor,
+      color: iconColor, // Use the dark color for the SVG stroke
       cursor: 'pointer',
-      fontWeight: 'normal',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      fontSize: '13.3333px', 
-      display: 'inline-flex',
+      display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      transition: 'all 0.2s ease-out',
-      transform: isHovered ? 'scale(1.08)' : 'scale(1)',
-      boxShadow: isHovered ? `0 0 10px ${'#999999'}` : 'none',
+      transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+      transform: (isHovered || isActive) ? 'scale(1.1)' : 'scale(1)',
     };
   };
 
   return (
-    <div style={toolbarContainer}>
-      {/* Track Buttons */}
-      {tools.map((tool) => (
-        <button
-          key={tool.id}
-          style={getButtonStyle(tool.id, tool.color)}
-          onMouseEnter={() => setHovered(tool.id)}
+    <div style={masterWrapper}>
+      {/* SECTION 1: Construction Tools */}
+      <div style={groupContainer}>
+        {tools.map((tool) => (
+          <button
+            key={tool.id}
+            title={tool.label}
+            style={getButtonStyle(tool.id, 'track')}
+            onMouseEnter={() => setHovered(tool.id)}
+            onMouseLeave={() => setHovered(null)}
+            onClick={() => onSelectTool(activeTool === tool.id ? null : tool.id)}
+          >
+            {tool.icon}
+          </button>
+        ))}
+        
+        <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.1)', margin: '0 4px' }} />
+        
+        <button 
+          title="Reset Scene"
+          style={getButtonStyle('reset', 'action')}
+          onClick={onReset}
+          onMouseEnter={() => setHovered('reset')} 
           onMouseLeave={() => setHovered(null)}
-          onClick={() => onSelectTool(tool.id)}
         >
-          {tool.label}
+          <ActionIcon type="reset" />
         </button>
-      ))}
+      </div>
 
-      <div style={{ width: '30px' }} /> {/* Spacer */}
+      {/* SECTION 2: File Management */}
+      <div style={groupContainer}>
+        <button 
+          title="Save Track Layout"
+          style={getButtonStyle('save', 'action')}
+          onClick={onSave}
+          onMouseEnter={() => setHovered('save')} 
+          onMouseLeave={() => setHovered(null)}
+        >
+          <ActionIcon type="save" />
+        </button>
 
-      {/* Action Buttons */}
-      <button 
-        style={getButtonStyle('reset', buttonColor, 'action')}
-        onMouseEnter={() => setHovered('reset')} 
-        onMouseLeave={() => setHovered(null)}
-        onClick={onReset}
-      >
-        Reset
-      </button>
-
-      <button 
-        style={getButtonStyle('save', '#52c796', 'action')}
-        onMouseEnter={() => setHovered('save')} 
-        onMouseLeave={() => setHovered(null)}
-        onClick={onSave}
-      >
-        Save
-      </button>
-
-      <label 
-        style={getButtonStyle('load', '#4758cb', 'action')}
-        onMouseEnter={() => setHovered('load')} 
-        onMouseLeave={() => setHovered(null)}
-      >
-        Load
-        <input 
-          type="file" 
-          accept=".json" 
-          style={{ display: 'none' }}
-          onChange={onLoad} 
-        />
-      </label>
+        <label 
+          title="Load Track Layout"
+          onMouseEnter={() => setHovered('load')} 
+          onMouseLeave={() => setHovered(null)}
+          style={{ ...getButtonStyle('load', 'action'), cursor: 'pointer' }}
+        >
+          <ActionIcon type="load" />
+          <input type="file" accept=".json" style={{ display: 'none' }} onChange={onLoad} />
+        </label>
+      </div>
     </div>
   );
 };

@@ -14,7 +14,6 @@ export function TrackStraight({ isGhost, isOccupied, isSnapped, ...props }) {
     if (isSnapped) return '#44ff44';  // Green
     return '#8a8a8a';                 // Duplo Grey
   }
-  console.log("GLB Nodes:", nodes);
 
   return (
     <group {...props} dispose={null}>

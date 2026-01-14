@@ -13,80 +13,121 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
     isSnapped: false,
     snapInfo: null
   });
-  const SNAP_THRESHOLD = 50;
+  const SNAP_THRESHOLD = 30;
 
   useEffect(() => {
     setIsLeft(false);
   }, [activeTool]);
 
-  const getSnapPoints = (track) => {
-    const points = [];
+  const getPorts = (track) => {
+    const ports = [];
+    const { type, rotation = 0, position, isLeft: trackIsLeft } = track;
+    const posVec = new THREE.Vector3(...position);
+
+    // 1. STRAIGHT: Start [0,0,0], End [0,0,L]
+    if (type === 'STRAIGHT') {
+      ports.push({ pos: new THREE.Vector3(0, 0, 0), rot: rotation + Math.PI, id: 'start' });
+      ports.push({ pos: new THREE.Vector3(0, 0, STRAIGHT_LENGTH), rot: rotation, id: 'end' });
+    } 
     
-    // --- Start Point Snap (Green Side) ---
-    points.push({
-      pos: new THREE.Vector3(...track.position),
-      // To connect to a START, the new track must be rotated 180 deg (Math.PI) 
-      rot: (track.rotation || 0) + Math.PI,
-      isOccupied: track.prevTrackId !== null,
-      parentId: track.id,
-      isStartSnap: true
+    // 2. CURVED: Start [0,0,0], End [Calculated]
+    else if (type === 'CURVED') {
+      ports.push({ pos: new THREE.Vector3(0, 0, 0), rot: rotation + Math.PI, id: 'start' });
+      const dir = trackIsLeft ? -1 : 1;
+      const localEnd = new THREE.Vector3(
+        (CURVE_RADIUS - Math.cos(CURVE_ANGLE) * CURVE_RADIUS) * dir,
+        0,
+        Math.sin(CURVE_ANGLE) * CURVE_RADIUS
+      );
+      const angleChange = trackIsLeft ? -CURVE_ANGLE : CURVE_ANGLE;
+      ports.push({ pos: localEnd, rot: rotation + angleChange, id: 'end' });
+    }
+
+    // 3. Y_TRACK: 1 Base Port, 2 Exit Ports
+    else if (type === 'Y_TRACK') {
+      ports.push({ pos: new THREE.Vector3(0, 0, 0), rot: rotation + Math.PI, id: 'base' });
+      // Left exit
+      ports.push({ 
+        pos: new THREE.Vector3((CURVE_RADIUS - Math.cos(CURVE_ANGLE) * CURVE_RADIUS) * -1, 0, Math.sin(CURVE_ANGLE) * CURVE_RADIUS), 
+        rot: rotation - CURVE_ANGLE, id: 'left' 
+      });
+      // Right exit
+      ports.push({ 
+        pos: new THREE.Vector3((CURVE_RADIUS - Math.cos(CURVE_ANGLE) * CURVE_RADIUS) * 1, 0, Math.sin(CURVE_ANGLE) * CURVE_RADIUS), 
+        rot: rotation + CURVE_ANGLE, id: 'right' 
+      });
+    }
+
+    // 4. X_TRACK: 4 Ports (Crossing at center)
+    else if (type === 'X_TRACK') {
+      const half = STRAIGHT_LENGTH / 2;
+      const angle = Math.PI / 6;
+      ports.push({ pos: new THREE.Vector3(0, 0, -half), rot: rotation + Math.PI, id: 'a_start' });
+      ports.push({ pos: new THREE.Vector3(0, 0, half), rot: rotation, id: 'a_end' });
+      ports.push({ 
+        pos: new THREE.Vector3(-Math.sin(angle) * half, 0, -Math.cos(angle) * half), 
+        rot: rotation + angle + Math.PI, id: 'b_start' 
+      });
+      ports.push({ 
+        pos: new THREE.Vector3(Math.sin(angle) * half, 0, Math.cos(angle) * half), 
+        rot: rotation + angle, id: 'b_end' 
+      });
+    }
+
+    // Convert local ports to World Space
+    return ports.map(port => {
+      const worldPos = port.pos
+        .clone()
+        .applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation)
+        .add(posVec);
+      
+      return { ...port, pos: worldPos, parentId: track.id };
     });
-
-    // --- End Point Snap (Red Side) ---
-    const isStraight = track.type === 'STRAIGHT';
-    const localEnd = isStraight 
-      ? new THREE.Vector3(0, 0, STRAIGHT_LENGTH)
-      : new THREE.Vector3(
-          (CURVE_RADIUS - Math.cos(CURVE_ANGLE) * CURVE_RADIUS) * (track.isLeft ? -1 : 1),
-          0,
-          Math.sin(CURVE_ANGLE) * CURVE_RADIUS
-        );
-
-    const worldEnd = localEnd
-      .applyAxisAngle(new THREE.Vector3(0, 1, 0), track.rotation || 0)
-      .add(new THREE.Vector3(...track.position));
-
-    const angleChange = isStraight ? 0 : (track.isLeft ? -CURVE_ANGLE : CURVE_ANGLE);
-
-    points.push({
-      pos: worldEnd,
-      rot: (track.rotation || 0) + angleChange,
-      isOccupied: track.nextTrackId !== null,
-      parentId: track.id,
-      isStartSnap: false
-    });
-
-    return points;
   };
 
   const handlePointerMove = (e) => {
     if (!activeTool) return;
     let bestTarget = null;
     let minDistance = SNAP_THRESHOLD;
-    tracks.forEach(track => {
-      const snapPoints = getSnapPoints(track);
 
-      snapPoints.forEach(point => {
-        const dist = e.point.distanceTo(point.pos);
+    tracks.forEach(track => {
+      const ports = getPorts(track);
+      ports.forEach(port => {
+        const dist = e.point.distanceTo(port.pos);
         if (dist < minDistance) {
-          if (!point.isOccupied || !bestTarget || bestTarget.isOccupied) {
-            bestTarget = point;
-            minDistance = dist;
-          }
+          bestTarget = port;
+          minDistance = dist;
         }
       });
     });
 
     if (bestTarget) {
+      let finalPos = [bestTarget.pos.x, 0, bestTarget.pos.z];
+      let finalRot = bestTarget.rot;
+
+      // SPECIAL LOGIC FOR X_TRACK GHOST
+      // Since X_TRACK pivot is at the center, we must offset the position 
+      // so the PORT (edge) hits the snap target, not the center.
+      if (activeTool === 'X_TRACK') {
+        const half = STRAIGHT_LENGTH / 2;
+        const offset = new THREE.Vector3(0, 0, half).applyAxisAngle(new THREE.Vector3(0, 1, 0), finalRot);
+        finalPos = [bestTarget.pos.x + offset.x, 0, bestTarget.pos.z + offset.z];
+      }
+
       setGhostState({
-        pos: [bestTarget.pos.x, 0, bestTarget.pos.z],
-        rot: bestTarget.rot,
-        isOccupied: bestTarget.isOccupied,
+        pos: finalPos,
+        rot: finalRot,
+        isOccupied: false, // Need to check connection logic later
         isSnapped: true,
         snapInfo: bestTarget
       });
     } else {
-      setGhostState({ pos: [e.point.x, 0, e.point.z], rot: 0, isOccupied: false, isSnapped: false, snapInfo: null });
+      setGhostState({ 
+        pos: [e.point.x, 0, e.point.z], 
+        rot: 0, 
+        isOccupied: false, 
+        isSnapped: false, 
+        snapInfo: null });
     }
   };
 
@@ -98,15 +139,20 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
         onPointerMove={handlePointerMove}
         onContextMenu={(e) => {
           if (!activeTool) return;
-          e.nativeEvent.preventDefault(); // Stop the browser menu
+          e.nativeEvent.preventDefault();
           setIsLeft(!isLeft);
         }}
         onClick={() => {
           const isFirstTrack = tracks.length === 0;
-          const canPlace = isFirstTrack || (ghostState.isSnapped && !ghostState.isOccupied);
-
-          if (activeTool && canPlace) {
-            onPlaceTrack(activeTool, ghostState.pos, ghostState.rot, ghostState.snapInfo, isLeft);
+  
+          if (activeTool && (isFirstTrack || ghostState.isSnapped)) {
+            onPlaceTrack(
+              activeTool, 
+              ghostState.pos,    // Pass the actual ghost position (could be mouse or snapped)
+              ghostState.rot,    // Pass the actual ghost rotation
+              ghostState.snapInfo, 
+              isLeft
+            );
           }
         }}
       >
@@ -116,8 +162,8 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
       {activeTool && (
         <group position={ghostState.pos} rotation={[0, ghostState.rot, 0]}>
           <Track 
-            type={activeTool === 'STRAIGHT' ? 'STRAIGHT' : 'CURVED'} 
-            isLeft={activeTool === 'STRAIGHT' ? false : isLeft} 
+            type={activeTool} 
+            isLeft={activeTool === 'STRAIGHT' ? false : activeTool === 'CURVED' ? isLeft : false} 
             isGhost
             isOccupied={ghostState.isOccupied}
             isSnapped={ghostState.isSnapped}
