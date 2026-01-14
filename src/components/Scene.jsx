@@ -19,7 +19,7 @@ const Scene = ({ activeTool, tracks, onPlaceTrack, onDeleteTrack }) => {
       <directionalLight 
         position={[100, 200, 100]} 
         intensity={1.0} 
-        castShadow 
+        castShadow={true}
         shadow-mapSize={[2048, 2048]} // Higher resolution shadows
       />
       <OrbitControls makeDefault />
@@ -40,7 +40,7 @@ const Scene = ({ activeTool, tracks, onPlaceTrack, onDeleteTrack }) => {
             sectionColor="#c7c5c5"
             cellThickness={1}          // Thinner lines reduce Moiré patterns
             sectionThickness={1.5}
-            position={[0, -0.01, 0]}   // Tiny offset to prevent flickering with tracks
+            position={[0, -0.01, 0]} 
         />
       
       {tracks.map(track => (

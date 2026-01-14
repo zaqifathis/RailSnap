@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Line, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { STRAIGHT_LENGTH, CURVE_RADIUS, CURVE_ANGLE } from '../utils/constants';
+import {TrackStraight} from './models/TrackStraight';
 
 const Track = ({ 
   type = 'STRAIGHT', 
@@ -13,37 +14,7 @@ const Track = ({
   onPointerOver,
   onPointerOut,
   onClick 
-}) => {
-
-  // GLB MODELS
-  const {scene} = useGLTF('/models/track_straight.glb');
-  const model = useMemo(() => {
-    const clone = scene.clone();
-    
-    clone.traverse((child) => {
-      if (child.isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-        // Clone material so we don't affect other tracks
-        child.material = child.material.clone();
-        
-        // Handle transparency for ghost mode
-        child.material.transparent = isGhost;
-        child.material.opacity = isGhost ? 0.9 : 1.0;
-
-        // Apply visual feedback to the model
-        if (isSelected) {
-          child.material.emissive.set('#ffffff'); // Highlight white
-          child.material.emissiveIntensity = 0.5;
-        } else if (isGhost) {
-          if (isOccupied) child.material.color.set('#ff0000'); // Red if blocked
-          else if (isSnapped) child.material.color.set('#ffe100'); // Yellow if snapping
-          else child.material.color.set('#d8d8d8'); // Gray ghost
-        }
-      }
-    });
-    return clone;
-  }, [scene, isGhost, isOccupied, isSnapped, isSelected]);
+}) => {  
 
   // TRACKS LINE/CURVE
   const points = useMemo(() => {
@@ -87,7 +58,13 @@ const Track = ({
       onPointerOut={onPointerOut} 
       onClick={onClick}
     >
-      {type === 'STRAIGHT' && <primitive object={model} />}
+      {type === 'STRAIGHT' && (
+        <TrackStraight 
+          isGhost={isGhost}
+          isOccupied={isOccupied}
+          isSnapped={isSnapped}
+        />
+      )}
       <Line 
       points={points}
       visible={false} 
@@ -104,5 +81,4 @@ const Track = ({
   );
 };
 
-useGLTF.preload('/models/track_straight.glb'); 
 export default Track;
