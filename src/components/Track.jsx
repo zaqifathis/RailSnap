@@ -14,7 +14,6 @@ const Track = ({
   isOccupied = false, 
   isSnapped = false,
   isSelected = false, 
-  activeState = 0, // 0 or 1 to toggle Y-path or X-top
   onPointerOver,
   onPointerOut,
   onClick 
@@ -109,7 +108,6 @@ const Track = ({
         />
       )}
       {paths.map((pts, index) => {
-        const isInactivePath = type === 'Y_TRACK' && activeState !== index;
         return (
           <Line 
             key={index}

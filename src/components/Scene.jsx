@@ -1,11 +1,11 @@
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid, GizmoHelper, GizmoViewport, Environment, ContactShadows } from '@react-three/drei';
+import { OrbitControls, Grid, GizmoHelper, GizmoViewport, Environment } from '@react-three/drei';
 import { DUPLO_STUD } from '../utils/constants';
 import Track from './Track';
 import { useState } from 'react';
 import InteractionHandler from './InteractionHandler';
 
-const Scene = ({ activeTool, tracks, onPlaceTrack, onDeleteTrack, onToggleTrack }) => {
+const Scene = ({ activeTool, tracks, onPlaceTrack, onDeleteTrack}) => {
   const [hoveredId, setHoveredId] = useState(null);
 
   return (
@@ -39,8 +39,8 @@ const Scene = ({ activeTool, tracks, onPlaceTrack, onDeleteTrack, onToggleTrack 
         fadeDistance={5000}
         fadeStrength={5}
         followCamera={false}
-        cellColor="#b7b7b7" 
-        sectionColor="#a1a0a0"
+        cellColor="#bebebe" 
+        sectionColor="#afaeae"
         cellThickness={1}
         sectionThickness={1.5}
         position={[0, -0.01, 0]} 
@@ -49,7 +49,7 @@ const Scene = ({ activeTool, tracks, onPlaceTrack, onDeleteTrack, onToggleTrack 
       {tracks.map(track => (
         <Track 
           key={track.id}
-          {...track} // Spreads position, rotation, type, isLeft, activeState, etc.
+          {...track}
           isSelected={hoveredId === track.id}
           onPointerOver={(e) => {
             e.stopPropagation();
@@ -58,13 +58,7 @@ const Scene = ({ activeTool, tracks, onPlaceTrack, onDeleteTrack, onToggleTrack 
           onPointerOut={() => setHoveredId(null)}
           onClick={(e) => {
             e.stopPropagation();
-            // Delete only if no tool is active
             if (!activeTool) onDeleteTrack(track.id);
-          }}
-          // 3. Right-click to toggle switch direction or X-track state
-          onContextMenu={(e) => {
-            e.stopPropagation();
-            if (!activeTool) onToggleTrack(track.id);
           }}
         />
       ))}

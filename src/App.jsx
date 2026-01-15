@@ -88,7 +88,6 @@ function App() {
         isLeft: type === 'STRAIGHT' || type === 'X_TRACK' || type === 'Y_TRACK' ? isLeftOverride : isLeftOverride,
         position,
         rotation,
-        activeState: 0, // Toggle for Y-switch or X-height
         connections: {[primaryPort]: snapInfo ? snapInfo.parentId : null}
       };
 
@@ -119,14 +118,6 @@ function App() {
     });
   };
 
-  // --- TOGGLE LOGIC (For Right Click/Switching) ---
-  const toggleTrack = (trackId) => {
-    setTracks(prev => prev.map(t => {
-      if (t.id !== trackId) return t;
-      return { ...t, activeState: t.activeState === 0 ? 1 : 0 };
-    }));
-  };
-
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0, overflow: 'hidden' }}>
       <TrackCounter tracks={tracks} />
@@ -141,7 +132,6 @@ function App() {
         tracks={tracks} 
         onPlaceTrack={addTrack}
         onDeleteTrack={deleteTrack}
-        onToggleTrack={toggleTrack} // Pass this down to handle switch toggles
       />
     </div>
   );
