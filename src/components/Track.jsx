@@ -65,7 +65,7 @@ const Track = ({
     // --- X-TRACK (Crossing) ---
     if (type === 'X_TRACK') {
       const half = STRAIGHT_LENGTH / 2;
-      const angle = Math.PI / 6; // 30 degrees
+      const angle = Math.PI / 3; // 60 degrees
       const pathA = [
         new THREE.Vector3(0, 0, -half),
         new THREE.Vector3(0, 0, half),
