@@ -101,13 +101,13 @@ const Track = ({
       onPointerOut={onPointerOut} 
       onClick={onClick}
     >
-      {/* {type === 'STRAIGHT' && (
+      {type === 'STRAIGHT' && (
         <TrackStraight 
           isGhost={isGhost}
           isOccupied={isOccupied}
           isSnapped={isSnapped}
         />
-      )} */}
+      )}
       {paths.map((pts, index) => {
         const isInactivePath = type === 'Y_TRACK' && activeState !== index;
         return (

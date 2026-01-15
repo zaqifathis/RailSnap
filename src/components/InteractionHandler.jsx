@@ -62,7 +62,7 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
     // 4. X_TRACK: 4 Ports (Crossing at center)
     else if (type === 'X_TRACK') {
       const half = STRAIGHT_LENGTH / 2;
-      const angle = Math.PI / 6;
+      const angle = Math.PI / 3;
       ports.push({ pos: new THREE.Vector3(0, 0, -half), rot: rotation + Math.PI, id: 'a_start' });
       ports.push({ pos: new THREE.Vector3(0, 0, half), rot: rotation, id: 'a_end' });
       ports.push({ 
