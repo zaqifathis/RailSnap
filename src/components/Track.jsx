@@ -2,10 +2,12 @@ import React, { useMemo } from 'react';
 import { Line, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { STRAIGHT_LENGTH, CURVE_RADIUS, CURVE_ANGLE } from '../utils/constants';
+
 import {TrackStraight} from './models/TrackStraight';
 import { TrackCurved } from './models/TrackCurved';
 import { TrackCross } from './models/TrackCross60';
 import { TrackCurvedLeft } from './models/TrackCurvedLeft';
+import { TrackYSwitch } from './models/TrackYSwitch';
 
 const Track = ({ 
   position= [0, 0, 0],
@@ -115,6 +117,13 @@ const Track = ({
       )}
       {type === 'X_TRACK' && (
         <TrackCross 
+          isGhost={isGhost}
+          isOccupied={isOccupied}
+          isSnapped={isSnapped}
+        />
+      )}
+      {type === 'Y_TRACK' && (
+        <TrackYSwitch 
           isGhost={isGhost}
           isOccupied={isOccupied}
           isSnapped={isSnapped}

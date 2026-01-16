@@ -7,7 +7,7 @@ import { interactionColor } from '../../utils/constants';
 
 export function TrackCurved({ isGhost, isOccupied, isSnapped, ...props }) {
   const { nodes, materials } = useGLTF('/models/track_curved-opt.glb')
-
+S
   const getMaterialColor = () => {
     if (isOccupied) return interactionColor.occupied;
     if (isSnapped) return interactionColor.snap;  
@@ -17,11 +17,11 @@ export function TrackCurved({ isGhost, isOccupied, isSnapped, ...props }) {
   return (
     <group {...props} dispose={null}>
       <mesh
-        name="track_curved"
+        name="curved_track"
         castShadow={true}
         receiveShadow={true}
-        geometry={nodes.track_curved.geometry}
-        material={nodes.track_curved.material}
+        geometry={nodes.curved_track.geometry}
+        material={nodes.curved_track.material}
       >
         <meshStandardMaterial 
           color={getMaterialColor()}
