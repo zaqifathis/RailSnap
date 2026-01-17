@@ -41,11 +41,11 @@ const ViewToggle = ({ viewMode, setViewMode }) => {
       onValueChange={(value) => { if (value) setViewMode(value); }}
       style={rootStyle}
     >
-      <ToggleGroup.Item value="3D" style={itemStyle("3D")}>
-        3D
-      </ToggleGroup.Item>
       <ToggleGroup.Item value="2D" style={itemStyle("2D")}>
         2D
+      </ToggleGroup.Item>
+      <ToggleGroup.Item value="3D" style={itemStyle("3D")}>
+        3D
       </ToggleGroup.Item>
     </ToggleGroup.Root>
   );
