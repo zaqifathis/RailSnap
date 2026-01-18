@@ -9,7 +9,7 @@ const ControlRow = ({ icon: Icon, label, text }) => (
     <div style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
       {typeof Icon === 'string' ? (
         <div style={{ 
-          width: '24px', textAlign: 'center', fontWeight: 'bold', fontSize: '8px',
+          minWidth: '24px', padding: '0 4px', textAlign: 'center', fontWeight: 'bold', fontSize: '8px',
           border: `1.2px solid ${uiTheme.secondary}`, 
           borderRadius: '3px', lineHeight: '1.6', color: uiTheme.secondary 
         }}>{Icon}</div>
@@ -30,7 +30,8 @@ const HelpMenu = () => {
   const controls = [
     { icon: LeftClick, label: "Left Click", text: "Place / Delete" },
     { icon: RightClick, label: "Right Click", text: "Toggle Switch" },
-    { icon: "ESC", label: "ESC", text: "Deselect Tool" }
+    { icon: "ESC", label: "ESC", text: "Deselect Tool" },
+    { icon: "SNAP", label: "Snap", text: "Move cursor to end of track" }
   ];
 
   const cardStyle = {
