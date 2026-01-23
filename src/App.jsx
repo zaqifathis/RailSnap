@@ -6,6 +6,7 @@ import TrackCounter from './components/UI/TrackCounter';
 import { generateUUID } from 'three/src/math/MathUtils.js';
 import ViewToggle from './components/UI/ViewToggle';
 import HelpMenu from './components/UI/HelpMenu';
+import { getTrackPaths } from './constants/trackPaths';
 
 // --- File Validator ---
 const isValidTrackData = (data) => {
@@ -90,6 +91,7 @@ function App() {
         isLeft: type === 'STRAIGHT' || type === 'X_TRACK' || type === 'Y_TRACK' ? isLeftOverride : isLeftOverride,
         position,
         rotation,
+        paths: getTrackPaths(type, isLeftOverride),
         connections: {[primaryPort]: snapInfo ? snapInfo.parentId : null}
       };
 

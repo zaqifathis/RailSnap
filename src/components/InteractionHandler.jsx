@@ -3,6 +3,8 @@ import { STRAIGHT_LENGTH,CURVE_ANGLE, CURVE_RADIUS } from '../constants/constant
 import { Plane } from '@react-three/drei';
 import { useState, useEffect, useMemo } from 'react';
 import Track from './Track';
+import { checkTrackCollision } from '../utils/trackIntersection';
+import { getTrackPaths, getPortsTrack } from '../constants/trackPaths';
 
 const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
   const [isLeft, setIsLeft] = useState(false);
@@ -20,79 +22,23 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
     setMousePos(e.point); // Just update the raw position
   };
 
-   const getPorts = (track) => {
-    const ports = [];
+  const getPorts = (track) => {
     const { type, rotation = 0, position, isLeft: trackIsLeft } = track;
     const posVec = new THREE.Vector3(...position);
+    const localPorts = getPortsTrack(type, trackIsLeft);
 
-    // 1. STRAIGHT: Start [0,0,0], End [0,0,L]
-    if (type === 'STRAIGHT') {
-      ports.push({ pos: new THREE.Vector3(0, 0, 0), rot: rotation + Math.PI, id: 'start' });
-      ports.push({ pos: new THREE.Vector3(0, 0, STRAIGHT_LENGTH), rot: rotation, id: 'end' });
-    } 
-    
-    // 2. CURVED: Start [0,0,0], End [Calculated]
-    else if (type === 'CURVED') {
-      ports.push({ pos: new THREE.Vector3(0, 0, 0), rot: rotation + Math.PI, id: 'start' });
-      const dir = trackIsLeft ? -1 : 1;
-      const localEnd = new THREE.Vector3(
-        (CURVE_RADIUS - Math.cos(CURVE_ANGLE) * CURVE_RADIUS) * dir,
-        0,
-        Math.sin(CURVE_ANGLE) * CURVE_RADIUS
-      );
-      const angleChange = trackIsLeft ? -CURVE_ANGLE : CURVE_ANGLE;
-      ports.push({ pos: localEnd, rot: rotation + angleChange, id: 'end' });
-    }
-
-    // 3. Y_TRACK: 1 Base Port, 2 Exit Ports
-    else if (type === 'Y_TRACK') {
-      ports.push({ pos: new THREE.Vector3(0, 0, 0), rot: rotation + Math.PI, id: 'start' });
-      // Left exit
-      ports.push({ 
-        pos: new THREE.Vector3((CURVE_RADIUS - Math.cos(CURVE_ANGLE) * CURVE_RADIUS) * -1, 0, Math.sin(CURVE_ANGLE) * CURVE_RADIUS), 
-        rot: rotation - CURVE_ANGLE, id: 'end_left' 
-      });
-      // Right exit
-      ports.push({ 
-        pos: new THREE.Vector3((CURVE_RADIUS - Math.cos(CURVE_ANGLE) * CURVE_RADIUS) * 1, 0, Math.sin(CURVE_ANGLE) * CURVE_RADIUS), 
-        rot: rotation + CURVE_ANGLE, id: 'end_right' 
-      });
-    }
-
-    // 4. X_TRACK: 4 Ports (Crossing at center)
-    else if (type === 'X_TRACK') {
-      const half = STRAIGHT_LENGTH / 2;
-      const angle = Math.PI / 3;
-      ports.push({ pos: new THREE.Vector3(0, 0, -half), rot: rotation + Math.PI, id: 'a_start' });
-      ports.push({ pos: new THREE.Vector3(0, 0, half), rot: rotation, id: 'a_end' });
-      ports.push({ 
-        pos: new THREE.Vector3(-Math.sin(angle) * half, 0, -Math.cos(angle) * half), 
-        rot: rotation + angle + Math.PI, id: 'b_start' 
-      });
-      ports.push({ 
-        pos: new THREE.Vector3(Math.sin(angle) * half, 0, Math.cos(angle) * half), 
-        rot: rotation + angle, id: 'b_end' 
-      });
-    }
-
-    // 5. CROSS_90: 4 Ports (North, South, East, West)
-    else if (type === 'CROSS_90') {
-      const half = STRAIGHT_LENGTH / 2;
-      // Ports for other tracks to snap TO:
-      ports.push({ pos: new THREE.Vector3(0, 0, 0), rot: rotation + Math.PI, id: 'a_start' });
-      ports.push({ pos: new THREE.Vector3(0, 0, STRAIGHT_LENGTH), rot: rotation, id: 'a_end' });
-      ports.push({ pos: new THREE.Vector3(-half, 0, half), rot: rotation - Math.PI / 2, id: 'b_start' });
-      ports.push({ pos: new THREE.Vector3(half, 0, half), rot: rotation + Math.PI / 2, id: 'b_end' });
-    }
-
-    // Convert local ports to World Space
-    return ports.map(port => {
+    return localPorts.map(port => {
       const worldPos = port.pos
         .clone()
         .applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation)
         .add(posVec);
       
-      return { ...port, pos: worldPos, parentId: track.id };
+      return { 
+        ...port, 
+        pos: worldPos, 
+        rot: port.rot + rotation,
+        parentId: track.id 
+      };
     });
   };
 
@@ -116,39 +62,15 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
     });
 
     // UNIVERSAL ANCHOR LOGIC
-    let selectedLocalPort = { pos: new THREE.Vector3(0, 0, 0), rot: 0 };
+    const localPortsList = getPortsTrack(activeTool, isLeft);
+    const portToUse = (activeTool === 'Y_TRACK' || activeTool === 'X_TRACK') 
+      ? localPortsList[ghostPortIndex % localPortsList.length]
+      : localPortsList[0];
 
-    if (activeTool === 'Y_TRACK') {
-      const yPorts = ['base', 'left', 'right'];
-      const activePortId = yPorts[ghostPortIndex % 3];
-      const localPorts = {
-        base: { pos: new THREE.Vector3(0, 0, 0), rot: 0 },
-        left: { 
-          pos: new THREE.Vector3((CURVE_RADIUS - Math.cos(CURVE_ANGLE) * CURVE_RADIUS) * -1, 0, Math.sin(CURVE_ANGLE) * CURVE_RADIUS), 
-          rot: -CURVE_ANGLE + Math.PI
-        },
-        right: { 
-          pos: new THREE.Vector3((CURVE_RADIUS - Math.cos(CURVE_ANGLE) * CURVE_RADIUS) * 1, 0, Math.sin(CURVE_ANGLE) * CURVE_RADIUS), 
-          rot: CURVE_ANGLE + Math.PI
-        }
-      };
-      selectedLocalPort = localPorts[activePortId];
-    } else if (activeTool === 'X_TRACK') {
-      const xPorts = ['a_start', 'b_start'];
-      const activePortId = xPorts[ghostPortIndex % 2];
-      const angle = Math.PI / 3; // 60 deg
-      const half = STRAIGHT_LENGTH / 2;
-      const localPorts = {
-        a_start: { pos: new THREE.Vector3(0, 0, -half), rot: 0 },
-        a_end: { pos: new THREE.Vector3(0, 0, half), rot: Math.PI },
-        b_start: { pos: new THREE.Vector3(-Math.sin(angle) * half, 0, -Math.cos(angle) * half), rot: angle },
-        b_end: { pos: new THREE.Vector3(Math.sin(angle) * half, 0, Math.cos(angle) * half), rot: angle + Math.PI }
-      };
-      selectedLocalPort = localPorts[activePortId];
-    } else {
-      // STRAIGHT and CURVED always "grab" by the start [0,0,0]
-      selectedLocalPort = { pos: new THREE.Vector3(0, 0, 0), rot: 0 };
-    }
+    const selectedLocalPort = {
+      pos: portToUse.pos,
+      rot: portToUse.rot + Math.PI // We rotate 180 because we "look into" the port to snap
+    };
 
     let finalRot = 0;
     let finalPosVec = mousePos.clone();
@@ -168,11 +90,18 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
       finalPosVec.sub(worldOffset);
     }
 
+    const ghostPaths = getTrackPaths(activeTool, isLeft);
+    const isIntersecting = checkTrackCollision(
+      { position: finalPosVec, rotation: finalRot, paths: ghostPaths },
+      tracks,
+      bestTarget?.parentId
+    );
+
     return {
       pos: [finalPosVec.x, 0, finalPosVec.z],
       rot: finalRot,
       isSnapped: isSnapped,
-      isOccupied: isOccupied,
+      isOccupied: isOccupied || isIntersecting,
       snapInfo: isSnapped ? { ...bestTarget, ghostPortIndex: ghostPortIndex } : null
     };
   }, [mousePos, ghostPortIndex, activeTool, tracks, isLeft]);
@@ -210,7 +139,7 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
       </Plane>
 
       {activeTool && (
-        <group position={ghostState.pos} rotation={[0, ghostState.rot, 0]}>
+        <group position={ghostState.pos} rotation={[0, ghostState.rot, 0]} pointerEvents="none">
           <Track 
             type={activeTool} 
             isLeft={activeTool === 'STRAIGHT' ? false : activeTool === 'CURVED' ? isLeft : false} 

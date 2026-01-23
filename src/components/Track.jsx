@@ -11,6 +11,7 @@ import { TrackYSwitch } from './models/TrackYSwitch';
 import { TrackCross90 } from './models/TrackCross90';
 import { interactionColor } from '../constants/theme';
 import { trackColors } from '../constants/theme';
+import { getTrackPaths } from '../constants/trackPaths';
 
 const Track = ({ 
   position= [0, 0, 0],
@@ -26,73 +27,7 @@ const Track = ({
   onClick 
 }) => {  
 
-  // TRACKS LINE/CURVE
-  const paths = useMemo(() => {
-    // --- STRAIGHT ---
-    if (type === 'STRAIGHT') {
-      return [[
-        new THREE.Vector3(0, 0, 0),
-        new THREE.Vector3(0, 0, STRAIGHT_LENGTH),
-      ]];
-    }
-
-    // --- CURVED ---
-    if (type === 'CURVED') {
-      const pts = [];
-      const segments = 32;
-      const direction = isLeft ? -1 : 1;
-
-      for (let i = 0; i <= segments; i++) {
-        const angle = (i / segments) * CURVE_ANGLE;
-        const x = (CURVE_RADIUS - Math.cos(angle) * CURVE_RADIUS) * direction;
-        const z = Math.sin(angle) * CURVE_RADIUS;
-        pts.push(new THREE.Vector3(x, 0, z));
-      }
-      return [pts];
-    }
-
-    // --- Y-TRACK (Switch) ---
-    if (type === 'Y_TRACK') {
-      const leftPath = [];
-      const rightPath = [];
-      const segments = 32;
-      for (let i = 0; i <= segments; i++) {
-        const angle = (i / segments) * CURVE_ANGLE;
-        const z = Math.sin(angle) * CURVE_RADIUS;
-        const xLeft = (CURVE_RADIUS - Math.cos(angle) * CURVE_RADIUS) * -1;
-        const xRight = (CURVE_RADIUS - Math.cos(angle) * CURVE_RADIUS) * 1;
-        leftPath.push(new THREE.Vector3(xLeft, 0, z));
-        rightPath.push(new THREE.Vector3(xRight, 0, z));
-      }
-      return [leftPath, rightPath];
-    }
-
-    // --- X-TRACK (Crossing) ---
-    if (type === 'X_TRACK') {
-      const half = STRAIGHT_LENGTH / 2;
-      const angle = Math.PI / 3; // 60 degrees
-      const pathA = [
-        new THREE.Vector3(0, 0, -half),
-        new THREE.Vector3(0, 0, half),
-      ];
-      const pathB = [
-        new THREE.Vector3(-Math.sin(angle) * half, 0, -Math.cos(angle) * half),
-        new THREE.Vector3(Math.sin(angle) * half, 0, Math.cos(angle) * half),
-      ];
-      return [pathA, pathB];
-    }
-
-    // --- CROSS_90 (Pivot at Origin) ---
-    if (type === 'CROSS_90') {
-      const half = STRAIGHT_LENGTH / 2;
-      return [
-        [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, STRAIGHT_LENGTH)],
-        [new THREE.Vector3(-half, 0, half), new THREE.Vector3(half, 0, half)],
-      ];
-    }
-
-    return [];
-  }, [type, isLeft]);
+  const paths = useMemo(() => getTrackPaths(type, isLeft), [type, isLeft]);
 
   let trackColor;
   if (isSelected) {
