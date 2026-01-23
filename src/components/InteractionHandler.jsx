@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { STRAIGHT_LENGTH,CURVE_ANGLE, CURVE_RADIUS } from '../constants/constants';
 import { Plane } from '@react-three/drei';
 import { useState, useEffect, useMemo } from 'react';
 import Track from './Track';
@@ -10,7 +9,7 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
   const [isLeft, setIsLeft] = useState(false);
   const [ghostPortIndex, setGhostPortIndex] = useState(0);
   const [mousePos, setMousePos] = useState(new THREE.Vector3(0, 0, 0));
-  const SNAP_THRESHOLD = 30;
+  const [ghostGeometry, setGhostGeometry] = useState(null);
 
   useEffect(() => {
     setIsLeft(false);
@@ -19,7 +18,10 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
 
   const handlePointerMove = (e) => {
     if (!activeTool) return;
-    setMousePos(e.point); // Just update the raw position
+    // Strictly follow the floor to prevent jitter
+    const floor = e.intersections.find(i => i.object.name === 'interaction-floor');
+    if (floor) setMousePos(floor.point);
+    else setMousePos(new THREE.Vector3(e.point.x, 0, e.point.z));
   };
 
   const getPorts = (track) => {
@@ -46,7 +48,7 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
     if (!activeTool) return null;
 
     let bestTarget = null;
-    let minDistance = SNAP_THRESHOLD;
+    let minDistance = 30;
 
     // 1. Find Snap Target
     tracks.forEach(track => {
@@ -90,25 +92,25 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
       finalPosVec.sub(worldOffset);
     }
 
-    const ghostPaths = getTrackPaths(activeTool, isLeft);
-    const isIntersecting = checkTrackCollision(
-      { position: finalPosVec, rotation: finalRot, paths: ghostPaths },
+    const isIntersecting = ghostGeometry ? checkTrackCollision(
+      { position: finalPosVec, rotation: finalRot, geometry: ghostGeometry },
       tracks,
       bestTarget?.parentId
-    );
+    ) : false;
 
     return {
       pos: [finalPosVec.x, 0, finalPosVec.z],
       rot: finalRot,
-      isSnapped: isSnapped,
-      isOccupied: isOccupied || isIntersecting,
+      isSnapped: !!bestTarget,
+      isOccupied: (bestTarget?.isOccupied || isIntersecting),
       snapInfo: isSnapped ? { ...bestTarget, ghostPortIndex: ghostPortIndex } : null
     };
-  }, [mousePos, ghostPortIndex, activeTool, tracks, isLeft]);
+  }, [mousePos, ghostPortIndex, activeTool, tracks, isLeft, ghostGeometry]);
 
   return (
     <>
       <Plane 
+        name="interaction-floor"
         args={[10000, 10000]} 
         rotation={[-Math.PI / 2, 0, 0]} 
         onPointerMove={handlePointerMove}
@@ -139,13 +141,15 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
       </Plane>
 
       {activeTool && (
-        <group position={ghostState.pos} rotation={[0, ghostState.rot, 0]} pointerEvents="none">
+        <group position={ghostState.pos} rotation={[0, ghostState.rot, 0]}>
           <Track 
             type={activeTool} 
             isLeft={activeTool === 'STRAIGHT' ? false : activeTool === 'CURVED' ? isLeft : false} 
             isGhost
             isOccupied={ghostState.isOccupied}
             isSnapped={ghostState.isSnapped}
+            onGeometryReady={setGhostGeometry}
+            raycast={null}
           />
         </group>
       )}

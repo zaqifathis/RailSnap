@@ -1,7 +1,5 @@
-import React, { useMemo } from 'react';
-import { Line, useGLTF } from '@react-three/drei';
-import * as THREE from 'three';
-import { STRAIGHT_LENGTH, CURVE_RADIUS, CURVE_ANGLE } from '../constants/constants';
+import React, { useMemo, useRef, useEffect } from 'react';
+import { Line } from '@react-three/drei';
 
 import {TrackStraight} from './models/TrackStraight';
 import { TrackCurved } from './models/TrackCurved';
@@ -24,8 +22,18 @@ const Track = ({
   isSelected = false, 
   onPointerOver,
   onPointerOut,
-  onClick 
+  onClick,
+  onGeometryReady,
+  raycast
 }) => {  
+
+  const meshRef = useRef();
+
+  useEffect(() => {
+    if (meshRef.current && onGeometryReady) {
+      onGeometryReady(meshRef.current.geometry);
+    }
+  }, [type, isLeft, onGeometryReady]);
 
   const paths = useMemo(() => getTrackPaths(type, isLeft), [type, isLeft]);
 
@@ -51,47 +59,15 @@ const Track = ({
       onPointerOut={onPointerOut} 
       onClick={onClick}
     >
-      {type === 'STRAIGHT' && (
-        <TrackStraight 
-          isGhost={isGhost}
-          isOccupied={isOccupied}
-          isSnapped={isSnapped}
-          isSelected={isSelected}
-        />
+      {type === 'STRAIGHT' && <TrackStraight ref={meshRef} raycast={raycast} isGhost={isGhost} isOccupied={isOccupied} isSnapped={isSnapped} isSelected={isSelected}/>}
+      {type === 'CURVED' && (isLeft ? 
+        <TrackCurvedLeft ref={meshRef} raycast={raycast} isGhost={isGhost} isOccupied={isOccupied} isSnapped={isSnapped} isSelected={isSelected} /> : 
+        <TrackCurved ref={meshRef} raycast={raycast} isGhost={isGhost} isOccupied={isOccupied} isSnapped={isSnapped} isSelected={isSelected} />
       )}
-      {type === 'CURVED' && (
-        isLeft ? (<TrackCurvedLeft isGhost={isGhost} isOccupied={isOccupied} isSnapped={isSnapped} isSelected={isSelected}/>) : 
-        (<TrackCurved 
-          isGhost={isGhost} 
-          isOccupied={isOccupied} 
-          isSnapped={isSnapped}
-          isSelected={isSelected}
-          />)
-      )}
-      {type === 'X_TRACK' && (
-        <TrackCross60 
-          isGhost={isGhost}
-          isOccupied={isOccupied}
-          isSnapped={isSnapped}
-          isSelected={isSelected}
-        />
-      )}
-      {type === 'Y_TRACK' && (
-        <TrackYSwitch 
-          isGhost={isGhost}
-          isOccupied={isOccupied}
-          isSnapped={isSnapped}
-          isSelected={isSelected}
-        />
-      )}
-      {type === 'CROSS_90' && (
-        <TrackCross90 
-          isGhost={isGhost}
-          isOccupied={isOccupied}
-          isSnapped={isSnapped}
-          isSelected={isSelected}
-        />
-      )}
+      {type === 'X_TRACK' && <TrackCross60 ref={meshRef} raycast={raycast} isGhost={isGhost} isOccupied={isOccupied} isSnapped={isSnapped} isSelected={isSelected} />}
+      {type === 'Y_TRACK' && <TrackYSwitch ref={meshRef} raycast={raycast} isGhost={isGhost} isOccupied={isOccupied} isSnapped={isSnapped} isSelected={isSelected} />}
+      {type === 'CROSS_90' && <TrackCross90 ref={meshRef} raycast={raycast} isGhost={isGhost} isOccupied={isOccupied} isSnapped={isSnapped} isSelected={isSelected} />}
+
       {paths.map((pts, index) => {
         return (
           <Line 

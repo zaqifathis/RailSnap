@@ -1,82 +1,65 @@
+// src/utils/trackIntersection.js
 import * as THREE from 'three';
 
-// 1. BROAD-PHASE: Quick distance filter
+/**
+ * BROAD-PHASE: Quick distance filter to skip tracks that are physically 
+ * impossible to hit. This keeps the BVH math performant.
+ */
 const isWithinRangeSq = (pos1, pos2, thresholdSq = 5000) => {
   const dx = pos1.x - pos2[0];
   const dz = pos1.z - pos2[2];
   return (dx * dx + dz * dz) < thresholdSq;
 };
 
-// 2. NARROW-PHASE: Shortest distance between two 2D line segments
-const getMinDistanceSq = (p1, p2, p3, p4) => {
-  const diff1 = new THREE.Vector3().subVectors(p2, p1);
-  const diff2 = new THREE.Vector3().subVectors(p4, p3);
-  const diff3 = new THREE.Vector3().subVectors(p1, p3);
-
-  const a = diff1.dot(diff1);
-  const b = diff1.dot(diff2);
-  const c = diff2.dot(diff2);
-  const d = diff1.dot(diff3);
-  const e = diff2.dot(diff3);
-  const denom = a * c - b * b;
-
-  let s, t;
-
-  if (denom !== 0) {
-    s = THREE.MathUtils.clamp((b * e - c * d) / denom, 0, 1);
-  } else {
-    s = 0;
-  }
-
-  t = THREE.MathUtils.clamp((b * s + e) / c, 0, 1);
-  
-  if (denom !== 0) {
-      s = THREE.MathUtils.clamp((b * t - d) / a, 0, 1);
-  }
-
-  const closestPoint1 = p1.clone().add(diff1.multiplyScalar(s));
-  const closestPoint2 = p3.clone().add(diff2.multiplyScalar(t));
-
-  return closestPoint1.distanceToSquared(closestPoint2);
-};
-
+/**
+ * NARROW-PHASE: Checks for actual triangle-to-triangle intersection 
+ * between the ghost track and existing tracks using three-mesh-bvh.
+ */
 export const checkTrackCollision = (ghost, existingTracks, parentId) => {
-  if (!ghost.paths) return false;
+  // 1. Broad Phase: Only check tracks near the ghost
+  const nearby = existingTracks.filter(t => 
+    t.id !== parentId && 
+    isWithinRangeSq(ghost.position, t.position)
+  );
+  
+  if (nearby.length === 0) return false;
 
-  const COLLISION_THRESHOLD_SQ = 1600; 
+  // 2. Prepare Ghost Transformation Matrix
+  const ghostMatrix = new THREE.Matrix4().compose(
+    ghost.position,
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ghost.rotation, 0)),
+    new THREE.Vector3(1, 1, 1)
+  );
 
-  const ghostWorldSegments = [];
-  ghost.paths.forEach(path => {
-    for (let i = 0; i < path.length - 1; i++) {
-      ghostWorldSegments.push({
-        start: new THREE.Vector3(path[i].x, 0, path[i].z).applyAxisAngle(new THREE.Vector3(0, 1, 0), ghost.rotation).add(ghost.position),
-        end: new THREE.Vector3(path[i+1].x, 0, path[i+1].z).applyAxisAngle(new THREE.Vector3(0, 1, 0), ghost.rotation).add(ghost.position)
-      });
-    }
-  });
-
-  const nearby = existingTracks.filter(t => t.id !== parentId && isWithinRangeSq(ghost.position, t.position));
-
+  // 3. BVH Intersection Loop
   for (const track of nearby) {
-    if (!track.paths) continue;
-    for (const path of track.paths) {
-      for (let i = 0; i < path.length - 1; i++) {
-        const tStart = new THREE.Vector3(path[i].x, 0, path[i].z)
-          .applyAxisAngle(new THREE.Vector3(0, 1, 0), track.rotation)
-          .add(new THREE.Vector3(...track.position));
-        
-        const tEnd = new THREE.Vector3(path[i+1].x, 0, path[i+1].z)
-          .applyAxisAngle(new THREE.Vector3(0, 1, 0), track.rotation)
-          .add(new THREE.Vector3(...track.position));
+    // Note: This requires that your track state or model components 
+    // provide access to the pre-computed boundsTree
+    if (!track.geometry?.boundsTree) continue;
 
-        // Check if ANY ghost segment is too close to ANY existing track segment
-        const collision = ghostWorldSegments.some(g => 
-          getMinDistanceSq(g.start, g.end, tStart, tEnd) < COLLISION_THRESHOLD_SQ
-        );
+    const trackMatrix = new THREE.Matrix4().compose(
+      new THREE.Vector3(...track.position),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, track.rotation, 0)),
+      new THREE.Vector3(1, 1, 1)
+    );
 
-        if (collision) return true;
-      }
-    }
+    // Calculate relative matrix to transform ghost into the local space of the existing track
+    const relativeMatrix = new THREE.Matrix4()
+      .copy(trackMatrix)
+      .invert()
+      .multiply(ghostMatrix);
+
+    /**
+     * intersectsGeometry is the core BVH method. 
+     * It checks if the ghost geometry hits the target's triangle tree.
+     */
+    const isColliding = track.geometry.boundsTree.intersectsGeometry(
+      ghost.geometry, 
+      relativeMatrix
+    );
+
+    if (isColliding) return true;
   }
+
   return false;
 };
