@@ -1,12 +1,21 @@
 
 import { useState, useEffect } from 'react';
+import * as THREE from 'three';
+import { generateUUID } from 'three/src/math/MathUtils.js';
+import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
+
 import Scene from './components/Scene';
 import Toolbar from './components/UI/Toolbar';
 import TrackCounter from './components/UI/TrackCounter';
-import { generateUUID } from 'three/src/math/MathUtils.js';
 import ViewToggle from './components/UI/ViewToggle';
 import HelpMenu from './components/UI/HelpMenu';
 import { getTrackPaths } from './constants/trackPaths';
+
+if (!THREE.BufferGeometry.prototype.computeBoundsTree) {
+  THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
+  THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
+  THREE.Mesh.prototype.raycast = acceleratedRaycast;
+}
 
 // --- File Validator ---
 const isValidTrackData = (data) => {
@@ -39,7 +48,7 @@ function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'train-network.json';
+    link.download = 'my-rail-track.json';
     link.click();
     URL.revokeObjectURL(url);
   };
