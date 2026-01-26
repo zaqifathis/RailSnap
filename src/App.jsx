@@ -69,7 +69,7 @@ function App() {
   };
 
   // --- NEW ADD TRACK LOGIC ---
-  const addTrack = (type, position, rotation = 0, snapInfo = null, isLeftOverride = false) => {
+  const addTrack = (type, position, rotation = 0, snapInfo = null, isLeftOverride = false, geometry) => {
     const newId = generateUUID();
 
     setTracks((prevTracks) => {
@@ -97,11 +97,22 @@ function App() {
       const newTrack = {
         id: newId,
         type,
-        isLeft: type === 'STRAIGHT' || type === 'X_TRACK' || type === 'Y_TRACK' ? isLeftOverride : isLeftOverride,
+        isLeft: isLeftOverride,
         position,
         rotation,
+        geometry,
         paths: getTrackPaths(type, isLeftOverride),
-        connections: {[primaryPort]: snapInfo ? snapInfo.parentId : null}
+        connections: { 
+          start: null, 
+          end: null, 
+          end_left: null, 
+          end_right: null,
+          a_start: null,
+          a_end: null,
+          b_start: null,
+          b_end: null,
+          ...{[primaryPort]: snapInfo ? snapInfo.parentId : null} 
+        }
       };
 
       return [...updatedTracks, newTrack];

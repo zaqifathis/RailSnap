@@ -8,7 +8,6 @@ import { interactionColor } from '../../constants/theme';
 
 export const TrackCurved = forwardRef(({ isGhost, raycast, isOccupied, isSnapped, isSelected, ...props }, ref) => {
   const { nodes, materials } = useGLTF('/models/track_curved-opt.glb')
-
   useEffect(() => {
       if (nodes.track_curved) {
         nodes.track_curved.geometry.computeBoundsTree();
@@ -27,7 +26,7 @@ export const TrackCurved = forwardRef(({ isGhost, raycast, isOccupied, isSnapped
     <group {...props} dispose={null}>
       <mesh
         ref={ref}
-        name="curved_track"
+        name="track_curved"
         castShadow={true}
         receiveShadow={true}
         geometry={nodes.track_curved.geometry}
