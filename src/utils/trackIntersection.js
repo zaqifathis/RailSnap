@@ -1,51 +1,56 @@
 // src/utils/trackIntersection.js
 import * as THREE from 'three';
 
-const areBoundsTouching = (ghostBox, track) => {
-  if (!track.geometry) return false;
+const areBoundsTouching = (ghostWorldBox, track) => {
+  // Check if geometry exists and is a proper Three.js object
+  if (!track.geometry || typeof track.geometry.computeBoundingBox !== 'function') {
+    return false;
+  }
   
-  // 1. Ensure the bounding box exists
+  // Ensure the bounding box exists
   if (!track.geometry.boundingBox) track.geometry.computeBoundingBox();
   
-  // 2. Clone the local box so we don't modify the original
+  // Create a world-space box for the existing track
   const trackBox = track.geometry.boundingBox.clone();
-  
-  // 3. Create the world matrix for the existing track
   const trackMatrix = new THREE.Matrix4().compose(
     new THREE.Vector3(...track.position),
     new THREE.Quaternion().setFromEuler(new THREE.Euler(0, track.rotation, 0)),
     new THREE.Vector3(1, 1, 1)
   );
   
-  // 4. Move the box to its real position in the world
   trackBox.applyMatrix4(trackMatrix);
-  trackBox.expandByScalar(5); // Small buffer to prevent math precision gaps
   
-  // 5. Check intersection against the ghost's world-space box
-  return ghostBox.intersectsBox(trackBox);
+  // Check intersection against the ghost's world-space box
+  return ghostWorldBox.intersectsBox(trackBox);
 };
 
-export const checkTrackCollision = (ghost, existingTracks, parentId) => {
-  if (!ghost.geometry || !ghost.geometry.boundsTree) return false;
+export const checkTrackCollision = (ghost, existingTracks, ignoreIds = []) => {
+  // Check if BVH and geometry are available
+  if (!ghost.geometry || !ghost.geometry.boundsTree || typeof ghost.geometry.computeBoundingBox !== 'function') {
+    return false;
+  }
 
-  // Prepare Ghost Box in World Space
+  // 1. Prepare Ghost World-Space Bounding Box
   if (!ghost.geometry.boundingBox) ghost.geometry.computeBoundingBox();
-  const ghostBox = ghost.geometry.boundingBox.clone();
+  const ghostWorldBox = ghost.geometry.boundingBox.clone();
 
   const ghostMatrix = new THREE.Matrix4().compose(
     ghost.position,
     new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ghost.rotation, 0)),
-    new THREE.Vector3(0.98, 0.98, 0.98) // Slight shrink for ports
+    new THREE.Vector3(1, 1, 1) 
   );
-  ghostBox.applyMatrix4(ghostMatrix);
+  ghostWorldBox.applyMatrix4(ghostMatrix);
 
-  // Filter nearby tracks using the volumetric check
+  // 2. BROAD PHASE: Use the fixed bounding box check
+  // Pass ghostWorldBox instead of ghost.position
   const nearby = existingTracks.filter(t => 
-    t.id !== parentId && areBoundsTouching(ghostBox, t)
+    !ignoreIds.includes(t.id) && 
+    areBoundsTouching(ghostWorldBox, t)
   );
   
   if (nearby.length === 0) return false;
 
+  // 3. NARROW PHASE: BVH Triangle check
   for (const track of nearby) {
     if (!track.geometry?.boundsTree) continue;
 
@@ -60,9 +65,8 @@ export const checkTrackCollision = (ghost, existingTracks, parentId) => {
       .invert()
       .multiply(ghostMatrix);
 
-    // Exact triangle check
+    // Precise triangle intersection
     if (track.geometry.boundsTree.intersectsGeometry(ghost.geometry, relativeMatrix)) {
-      console.log("YES, it is intersect!")
       return true;
     }
   }

@@ -12,7 +12,7 @@ export const TrackCurvedLeft = forwardRef(({ isGhost, raycast, isOccupied, isSna
   useEffect(() => {
       if (nodes['track_curved-l']) {
         nodes['track_curved-l'].geometry.computeBoundsTree();
-        return () => nodes['track_curved-l'].geometry.disposeBoundsTree();
+        nodes['track_curved-l'].geometry.computeBoundingBox();
       }
     }, [nodes]);
     

@@ -13,7 +13,7 @@ export const TrackYSwitch = forwardRef(({ isGhost, raycast, isOccupied, isSnappe
   useEffect(() => {
       if (nodes.Y) {
         nodes.Y.geometry.computeBoundsTree();
-        return () => nodes.Y.geometry.disposeBoundsTree();
+        nodes.Y.geometry.computeBoundingBox();
       }
     }, [nodes]);
 

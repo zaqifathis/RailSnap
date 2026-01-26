@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 
 import Track from './Track';
 import { checkTrackCollision } from '../utils/trackIntersection';
-import { getTrackPaths, getPortsTrack } from '../constants/trackPaths';
+import { getPortsTrack } from '../constants/trackPaths';
 
 const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
   const [isLeft, setIsLeft] = useState(false);
@@ -25,26 +25,6 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
     } else {
       setMousePos(new THREE.Vector3(e.point.x, 0, e.point.z));
     }
-  };
-
-  const getPorts = (track) => {
-    const { type, rotation = 0, position, isLeft: trackIsLeft } = track;
-    const posVec = new THREE.Vector3(...position);
-    const localPorts = getPortsTrack(type, trackIsLeft);
-
-    return localPorts.map(port => {
-      const worldPos = port.pos
-        .clone()
-        .applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation)
-        .add(posVec);
-      
-      return { 
-        ...port, 
-        pos: worldPos, 
-        rot: port.rot + rotation,
-        parentId: track.id 
-      };
-    });
   };
 
   const ghostState = useMemo(() => {
@@ -75,6 +55,7 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
 
     // 2. Local Anchor Logic
     const localPortsList = getPortsTrack(activeTool, isLeft);
+
     const portToUse = (activeTool === 'Y_TRACK' || activeTool === 'X_TRACK') 
       ? localPortsList[ghostPortIndex % localPortsList.length]
       : localPortsList[0];
@@ -102,11 +83,39 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
     }
 
     // 3. BVH Collision Check
+    const potentialConnections = [];
+    const ghostWorldPorts = localPortsList.map(lp => {
+      const worldPos = lp.pos.clone()
+        .applyAxisAngle(new THREE.Vector3(0, 1, 0), finalRot)
+        .add(finalPosVec);
+      return { ...lp, pos: worldPos };
+    });
+
+    // Check every track in the scene to see if it aligns with ANY of the ghost's ports
+    tracks.forEach(track => {
+      const trackPorts = getPortsTrack(track.type, track.isLeft).map(p => {
+        const pWorld = p.pos.clone()
+          .applyAxisAngle(new THREE.Vector3(0, 1, 0), track.rotation)
+          .add(new THREE.Vector3(...track.position));
+        return { ...p, pos: pWorld };
+      });
+
+      trackPorts.forEach(tp => {
+        ghostWorldPorts.forEach(gp => {
+          // If a ghost port is extremely close to an existing track port, it's a connection
+          if (gp.pos.distanceTo(tp.pos) < 1) { // 1mm threshold
+            potentialConnections.push(track.id);
+          }
+        });
+      });
+    });
+
     const isIntersecting = ghostGeometry ? checkTrackCollision(
       { position: finalPosVec, rotation: finalRot, geometry: ghostGeometry },
       tracks,
-      bestTarget?.parentId
+      potentialConnections
     ) : false;
+    console.log("isIntersecting: ", isIntersecting)
     
     return {
       pos: [finalPosVec.x, 0, finalPosVec.z],

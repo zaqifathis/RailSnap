@@ -9,7 +9,7 @@ import Toolbar from './components/UI/Toolbar';
 import TrackCounter from './components/UI/TrackCounter';
 import ViewToggle from './components/UI/ViewToggle';
 import HelpMenu from './components/UI/HelpMenu';
-import { getTrackPaths } from './constants/trackPaths';
+import { getTrackPaths, getPortsTrack } from './constants/trackPaths';
 
 if (!THREE.BufferGeometry.prototype.computeBoundsTree) {
   THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -73,7 +73,7 @@ function App() {
     const newId = generateUUID();
 
     setTracks((prevTracks) => {
-      // 1. Update the parent track's connections
+      // Update the parent track to show it's now connected to this new track
       let updatedTracks = prevTracks.map((t) => {
         if (snapInfo && t.id === snapInfo.parentId) {
           return {
@@ -83,36 +83,38 @@ function App() {
         return t;
       });
 
-      // 2. Identify which port on the NEW track connects to the parent
-      let primaryPort = 'start';
-      if (type === 'Y_TRACK') {
-        const yPorts = ['start', 'end_left', 'end_right'];
-        primaryPort = yPorts[snapInfo?.ghostPortIndex % 3 || 0];
-      } 
-      else if (type === 'X_TRACK') {
-        const xPorts = ['a_start', 'b_start'];
-        primaryPort = xPorts[snapInfo?.ghostPortIndex % 2 || 0];
+      // Get all possible ports for the NEW track type
+      // Initialize the connections object with null for every port
+      const allAvailablePorts = getPortsTrack(type, isLeftOverride);
+      const initialConnections = {};
+      allAvailablePorts.forEach(port => {
+        initialConnections[port.id] = null;
+      });
+
+      // Identify which port on the NEW track is connecting back to the parent
+      if (snapInfo) {
+        if (snapInfo) {
+          let primaryPortId = 'start';
+          if (type === 'Y_TRACK') {
+            const yPorts = ['start', 'end_left', 'end_right'];
+            primaryPortId = yPorts[snapInfo.ghostPortIndex % 3];
+          } else if (type === 'X_TRACK') {
+            const xPorts = ['a_start', 'b_start'];
+            primaryPortId = xPorts[snapInfo.ghostPortIndex % 2];
+          }
+          initialConnections[primaryPortId] = snapInfo.parentId;
+        }
       }
 
       const newTrack = {
         id: newId,
         type,
-        isLeft: isLeftOverride,
+        isLeft:isLeftOverride,
         position,
         rotation,
         geometry,
         paths: getTrackPaths(type, isLeftOverride),
-        connections: { 
-          start: null, 
-          end: null, 
-          end_left: null, 
-          end_right: null,
-          a_start: null,
-          a_end: null,
-          b_start: null,
-          b_end: null,
-          ...{[primaryPort]: snapInfo ? snapInfo.parentId : null} 
-        }
+        connections: initialConnections
       };
 
       return [...updatedTracks, newTrack];

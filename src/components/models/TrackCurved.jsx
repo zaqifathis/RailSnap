@@ -11,7 +11,7 @@ export const TrackCurved = forwardRef(({ isGhost, raycast, isOccupied, isSnapped
   useEffect(() => {
       if (nodes.track_curved) {
         nodes.track_curved.geometry.computeBoundsTree();
-        return () => nodes.track_curved.geometry.disposeBoundsTree();
+        nodes.track_curved.geometry.computeBoundingBox();
       }
     }, [nodes]);
 

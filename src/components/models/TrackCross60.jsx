@@ -12,7 +12,7 @@ export const TrackCross60 = forwardRef(({ isGhost, raycast, isOccupied, isSnappe
   useEffect(() => {
       if (nodes.cross60) {
         nodes.cross60.geometry.computeBoundsTree();
-        return () => nodes.cross60.geometry.disposeBoundsTree();
+        nodes.cross60.geometry.computeBoundingBox();
       }
     }, [nodes]);
 

@@ -12,7 +12,7 @@ export const TrackStraight = forwardRef(({ isGhost, raycast, isOccupied, isSnapp
   useEffect(() => {
     if (nodes.straight) {
       nodes.straight.geometry.computeBoundsTree();
-      return () => nodes.straight.geometry.disposeBoundsTree();
+      nodes.straight.geometry.computeBoundingBox();
     }
   }, [nodes]);
 
