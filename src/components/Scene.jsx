@@ -68,8 +68,9 @@ const Scene = ({ viewMode, activeTool, tracks, onPlaceTrack, onDeleteTrack, onTo
       
       <directionalLight 
         position={[100, 200, 100]} 
-        intensity={1.0} 
+        intensity={0.8} 
         castShadow={true}
+        shadow-bias={-0.0001}
         shadow-mapSize={[2048, 2048]} 
       />
 

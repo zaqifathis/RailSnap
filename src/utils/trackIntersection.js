@@ -1,81 +1,73 @@
+// src/utils/trackIntersection.js
 import * as THREE from 'three';
 
-// 1. BROAD-PHASE: Quick distance filter
-const isWithinRangeSq = (pos1, pos2, thresholdSq = 5000) => {
-  const dx = pos1.x - pos2[0];
-  const dz = pos1.z - pos2[2];
-  return (dx * dx + dz * dz) < thresholdSq;
-};
-
-// 2. NARROW-PHASE: Shortest distance between two 2D line segments
-const getMinDistanceSq = (p1, p2, p3, p4) => {
-  const diff1 = new THREE.Vector3().subVectors(p2, p1);
-  const diff2 = new THREE.Vector3().subVectors(p4, p3);
-  const diff3 = new THREE.Vector3().subVectors(p1, p3);
-
-  const a = diff1.dot(diff1);
-  const b = diff1.dot(diff2);
-  const c = diff2.dot(diff2);
-  const d = diff1.dot(diff3);
-  const e = diff2.dot(diff3);
-  const denom = a * c - b * b;
-
-  let s, t;
-
-  if (denom !== 0) {
-    s = THREE.MathUtils.clamp((b * e - c * d) / denom, 0, 1);
-  } else {
-    s = 0;
+const areBoundsTouching = (ghostWorldBox, track) => {
+  // Check if geometry exists and is a proper Three.js object
+  if (!track.geometry || typeof track.geometry.computeBoundingBox !== 'function') {
+    return false;
   }
-
-  t = THREE.MathUtils.clamp((b * s + e) / c, 0, 1);
   
-  if (denom !== 0) {
-      s = THREE.MathUtils.clamp((b * t - d) / a, 0, 1);
-  }
-
-  const closestPoint1 = p1.clone().add(diff1.multiplyScalar(s));
-  const closestPoint2 = p3.clone().add(diff2.multiplyScalar(t));
-
-  return closestPoint1.distanceToSquared(closestPoint2);
+  // Ensure the bounding box exists
+  if (!track.geometry.boundingBox) track.geometry.computeBoundingBox();
+  
+  // Create a world-space box for the existing track
+  const trackBox = track.geometry.boundingBox.clone();
+  const trackMatrix = new THREE.Matrix4().compose(
+    new THREE.Vector3(...track.position),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, track.rotation, 0)),
+    new THREE.Vector3(1, 1, 1)
+  );
+  
+  trackBox.applyMatrix4(trackMatrix);
+  
+  // Check intersection against the ghost's world-space box
+  return ghostWorldBox.intersectsBox(trackBox);
 };
 
-export const checkTrackCollision = (ghost, existingTracks, parentId) => {
-  if (!ghost.paths) return false;
+export const checkTrackCollision = (ghost, existingTracks, ignoreIds = []) => {
+  // Check if BVH and geometry are available
+  if (!ghost.geometry || !ghost.geometry.boundsTree || typeof ghost.geometry.computeBoundingBox !== 'function') {
+    return false;
+  }
 
-  const COLLISION_THRESHOLD_SQ = 1600; 
+  // 1. Prepare Ghost World-Space Bounding Box
+  if (!ghost.geometry.boundingBox) ghost.geometry.computeBoundingBox();
+  const ghostWorldBox = ghost.geometry.boundingBox.clone();
 
-  const ghostWorldSegments = [];
-  ghost.paths.forEach(path => {
-    for (let i = 0; i < path.length - 1; i++) {
-      ghostWorldSegments.push({
-        start: new THREE.Vector3(path[i].x, 0, path[i].z).applyAxisAngle(new THREE.Vector3(0, 1, 0), ghost.rotation).add(ghost.position),
-        end: new THREE.Vector3(path[i+1].x, 0, path[i+1].z).applyAxisAngle(new THREE.Vector3(0, 1, 0), ghost.rotation).add(ghost.position)
-      });
-    }
-  });
+  const ghostMatrix = new THREE.Matrix4().compose(
+    ghost.position,
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ghost.rotation, 0)),
+    new THREE.Vector3(1, 1, 1) 
+  );
+  ghostWorldBox.applyMatrix4(ghostMatrix);
 
-  const nearby = existingTracks.filter(t => t.id !== parentId && isWithinRangeSq(ghost.position, t.position));
+  // 2. BROAD PHASE: Use the fixed bounding box check
+  // Pass ghostWorldBox instead of ghost.position
+  const nearby = existingTracks.filter(t => 
+    !ignoreIds.includes(t.id) && 
+    areBoundsTouching(ghostWorldBox, t)
+  );
+  
+  if (nearby.length === 0) return false;
 
+  // 3. NARROW PHASE: BVH Triangle check
   for (const track of nearby) {
-    if (!track.paths) continue;
-    for (const path of track.paths) {
-      for (let i = 0; i < path.length - 1; i++) {
-        const tStart = new THREE.Vector3(path[i].x, 0, path[i].z)
-          .applyAxisAngle(new THREE.Vector3(0, 1, 0), track.rotation)
-          .add(new THREE.Vector3(...track.position));
-        
-        const tEnd = new THREE.Vector3(path[i+1].x, 0, path[i+1].z)
-          .applyAxisAngle(new THREE.Vector3(0, 1, 0), track.rotation)
-          .add(new THREE.Vector3(...track.position));
+    if (!track.geometry?.boundsTree) continue;
 
-        // Check if ANY ghost segment is too close to ANY existing track segment
-        const collision = ghostWorldSegments.some(g => 
-          getMinDistanceSq(g.start, g.end, tStart, tEnd) < COLLISION_THRESHOLD_SQ
-        );
+    const trackMatrix = new THREE.Matrix4().compose(
+      new THREE.Vector3(...track.position),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, track.rotation, 0)),
+      new THREE.Vector3(1, 1, 1)
+    );
 
-        if (collision) return true;
-      }
+    const relativeMatrix = new THREE.Matrix4()
+      .copy(trackMatrix)
+      .invert()
+      .multiply(ghostMatrix);
+
+    // Precise triangle intersection
+    if (track.geometry.boundsTree.intersectsGeometry(ghost.geometry, relativeMatrix)) {
+      return true;
     }
   }
   return false;

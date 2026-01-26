@@ -1,12 +1,21 @@
 
 import { useState, useEffect } from 'react';
+import * as THREE from 'three';
+import { generateUUID } from 'three/src/math/MathUtils.js';
+import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
+
 import Scene from './components/Scene';
 import Toolbar from './components/UI/Toolbar';
 import TrackCounter from './components/UI/TrackCounter';
-import { generateUUID } from 'three/src/math/MathUtils.js';
 import ViewToggle from './components/UI/ViewToggle';
 import HelpMenu from './components/UI/HelpMenu';
-import { getTrackPaths } from './constants/trackPaths';
+import { getTrackPaths, getPortsTrack } from './constants/trackPaths';
+
+if (!THREE.BufferGeometry.prototype.computeBoundsTree) {
+  THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
+  THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
+  THREE.Mesh.prototype.raycast = acceleratedRaycast;
+}
 
 // --- File Validator ---
 const isValidTrackData = (data) => {
@@ -39,7 +48,7 @@ function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'train-network.json';
+    link.download = 'my-rail-track.json';
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -60,11 +69,11 @@ function App() {
   };
 
   // --- NEW ADD TRACK LOGIC ---
-  const addTrack = (type, position, rotation = 0, snapInfo = null, isLeftOverride = false) => {
+  const addTrack = (type, position, rotation = 0, snapInfo = null, isLeftOverride = false, geometry) => {
     const newId = generateUUID();
 
     setTracks((prevTracks) => {
-      // 1. Update the parent track's connections
+      // Update the parent track to show it's now connected to this new track
       let updatedTracks = prevTracks.map((t) => {
         if (snapInfo && t.id === snapInfo.parentId) {
           return {
@@ -74,25 +83,36 @@ function App() {
         return t;
       });
 
-      // 2. Identify which port on the NEW track connects to the parent
-      let primaryPort = 'start';
-      if (type === 'Y_TRACK') {
-        const yPorts = ['start', 'end_left', 'end_right'];
-        primaryPort = yPorts[snapInfo?.ghostPortIndex % 3 || 0];
-      } 
-      else if (type === 'X_TRACK') {
-        const xPorts = ['a_start', 'b_start'];
-        primaryPort = xPorts[snapInfo?.ghostPortIndex % 2 || 0];
+      // Get all possible ports for the NEW track type
+      // Initialize the connections object with null for every port
+      const allAvailablePorts = getPortsTrack(type, isLeftOverride);
+      const initialConnections = {};
+      allAvailablePorts.forEach(port => {
+        initialConnections[port.id] = null;
+      });
+
+      // Identify which port on the NEW track is connecting back to the parent
+      if (snapInfo) {
+        let primaryPortId = 'start'; // Default
+        if (type === 'Y_TRACK') {
+          const yPorts = ['start', 'end_left', 'end_right'];
+          primaryPortId = yPorts[snapInfo.ghostPortIndex % 3];
+        } else if (type === 'X_TRACK') {
+          const xPorts = ['a_start', 'b_start'];
+          primaryPortId = xPorts[snapInfo.ghostPortIndex % 2];
+        }
+        initialConnections[primaryPortId] = snapInfo.parentId;
       }
 
       const newTrack = {
         id: newId,
         type,
-        isLeft: type === 'STRAIGHT' || type === 'X_TRACK' || type === 'Y_TRACK' ? isLeftOverride : isLeftOverride,
+        isLeft:isLeftOverride,
         position,
         rotation,
+        geometry,
         paths: getTrackPaths(type, isLeftOverride),
-        connections: {[primaryPort]: snapInfo ? snapInfo.parentId : null}
+        connections: initialConnections
       };
 
       return [...updatedTracks, newTrack];

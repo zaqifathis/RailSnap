@@ -1,7 +1,6 @@
-import React, { useMemo } from 'react';
-import { Line, useGLTF } from '@react-three/drei';
+import React, { useMemo, useRef, useEffect } from 'react';
+import { Line } from '@react-three/drei';
 import * as THREE from 'three';
-import { STRAIGHT_LENGTH, CURVE_RADIUS, CURVE_ANGLE } from '../constants/constants';
 
 import {TrackStraight} from './models/TrackStraight';
 import { TrackCurved } from './models/TrackCurved';
@@ -9,8 +8,8 @@ import { TrackCross60 } from './models/TrackCross60';
 import { TrackCurvedLeft } from './models/TrackCurvedLeft';
 import { TrackYSwitch } from './models/TrackYSwitch';
 import { TrackCross90 } from './models/TrackCross90';
-import { interactionColor } from '../constants/theme';
-import { trackColors } from '../constants/theme';
+
+import { interactionColor, trackColors } from '../constants/theme';
 import { getTrackPaths } from '../constants/trackPaths';
 
 const Track = ({ 
@@ -24,8 +23,17 @@ const Track = ({
   isSelected = false, 
   onPointerOver,
   onPointerOut,
+  onGeometryReady,
+  raycast,
   onClick 
 }) => {  
+  const meshRef = useRef();
+
+  useEffect(() => {
+    if (meshRef.current && onGeometryReady) {
+      onGeometryReady(meshRef.current.geometry);
+    }
+  }, [type, isLeft, onGeometryReady]);
 
   const paths = useMemo(() => getTrackPaths(type, isLeft), [type, isLeft]);
 
@@ -53,6 +61,8 @@ const Track = ({
     >
       {type === 'STRAIGHT' && (
         <TrackStraight 
+          ref={meshRef} 
+          raycast={raycast}
           isGhost={isGhost}
           isOccupied={isOccupied}
           isSnapped={isSnapped}
@@ -60,8 +70,10 @@ const Track = ({
         />
       )}
       {type === 'CURVED' && (
-        isLeft ? (<TrackCurvedLeft isGhost={isGhost} isOccupied={isOccupied} isSnapped={isSnapped} isSelected={isSelected}/>) : 
+        isLeft ? (<TrackCurvedLeft ref={meshRef} raycast={raycast} isGhost={isGhost} isOccupied={isOccupied} isSnapped={isSnapped} isSelected={isSelected}/>) : 
         (<TrackCurved 
+          ref={meshRef} 
+          raycast={raycast}
           isGhost={isGhost} 
           isOccupied={isOccupied} 
           isSnapped={isSnapped}
@@ -70,6 +82,8 @@ const Track = ({
       )}
       {type === 'X_TRACK' && (
         <TrackCross60 
+          ref={meshRef} 
+          raycast={raycast}
           isGhost={isGhost}
           isOccupied={isOccupied}
           isSnapped={isSnapped}
@@ -78,6 +92,8 @@ const Track = ({
       )}
       {type === 'Y_TRACK' && (
         <TrackYSwitch 
+          ref={meshRef} 
+          raycast={raycast}
           isGhost={isGhost}
           isOccupied={isOccupied}
           isSnapped={isSnapped}
@@ -86,6 +102,8 @@ const Track = ({
       )}
       {type === 'CROSS_90' && (
         <TrackCross90 
+          ref={meshRef} 
+          raycast={raycast}
           isGhost={isGhost}
           isOccupied={isOccupied}
           isSnapped={isSnapped}
@@ -102,6 +120,7 @@ const Track = ({
             lineWidth={isSelected ? 6 : (isGhost ? 5 : 3)} 
             transparent={isGhost} 
             opacity={isGhost ? 0.5 : 1}
+            raycast={() => null}
           />
         );
       })}
