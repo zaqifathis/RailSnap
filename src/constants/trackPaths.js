@@ -117,11 +117,11 @@ export const getPortsTrack = (type, isLeft = false) => {
       const half = STRAIGHT_LENGTH / 2;
       const angle = Math.PI / 3;
       ports.push({ pos: new THREE.Vector3(0, 0, -half), rot: Math.PI, id: 'a_start' });
-      ports.push({ pos: new THREE.Vector3(0, 0, half), rot: 0, id: 'a_end' });
       ports.push({ 
         pos: new THREE.Vector3(-Math.sin(angle) * half, 0, -Math.cos(angle) * half), 
         rot: angle + Math.PI, id: 'b_start' 
       });
+      ports.push({ pos: new THREE.Vector3(0, 0, half), rot: 0, id: 'a_end' });
       ports.push({ 
         pos: new THREE.Vector3(Math.sin(angle) * half, 0, Math.cos(angle) * half), 
         rot: angle, id: 'b_end' 

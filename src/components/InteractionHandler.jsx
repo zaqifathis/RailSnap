@@ -58,9 +58,8 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
     // 2. Local Anchor Logic
     const localPortsList = getPortsTrack(activeTool, isLeft);
 
-    const portToUse = (activeTool === 'Y_TRACK' || activeTool === 'X_TRACK') 
-      ? localPortsList[ghostPortIndex % localPortsList.length]
-      : localPortsList[0];
+    const portToUse =( activeTool === 'Y_TRACK') ? localPortsList[ghostPortIndex % localPortsList.length]
+      : (activeTool === 'X_TRACK') ? localPortsList[ghostPortIndex % (localPortsList.length/2)] : localPortsList[0];
 
     const selectedLocalPort = {
       pos: portToUse.pos,

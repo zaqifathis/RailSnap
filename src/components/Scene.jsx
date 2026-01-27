@@ -48,7 +48,7 @@ const CameraController = ({ viewMode }) => {
 };
 
 
-const Scene = ({ viewMode, activeTool, tracks, onPlaceTrack, onDeleteTrack, onToggleTrack}) => {
+const Scene = ({ viewMode, activeTool, tracks, onPlaceTrack, onDeleteTrack}) => {
   const [hoveredId, setHoveredId] = useState(null);
 
   return (

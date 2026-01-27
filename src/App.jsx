@@ -111,7 +111,6 @@ function App() {
         position,
         rotation,
         geometry,
-        paths: getTrackPaths(type, isLeftOverride),
         connections: initialConnections
       };
 
@@ -157,7 +156,6 @@ function App() {
         tracks={tracks} 
         onPlaceTrack={addTrack}
         onDeleteTrack={deleteTrack}
-        onToggleTrack={() => {}}
       />
     </div>
   );
