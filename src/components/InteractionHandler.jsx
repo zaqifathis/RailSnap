@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Plane } from '@react-three/drei';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 
 import Track from './Track';
@@ -13,6 +13,7 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
   const [mousePos, setMousePos] = useState(new THREE.Vector3(0, 0, 0));
   const [ghostGeometry, setGhostGeometry] = useState(null);
   const { raycaster, pointer, camera, scene } = useThree();
+  const floorRef = useRef();
 
   useEffect(() => {
     setIsLeft(false);
@@ -20,12 +21,11 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
   }, [activeTool]);
 
   useFrame(() => {
-    if (!activeTool) return;
+    if (!activeTool || !floorRef.current) return;
     raycaster.setFromCamera(pointer, camera);
-    const hits = raycaster.intersectObjects(scene.children, true);
-    const floorHit = hits.find(h => h.object.name === 'interaction-floor');
-    if (floorHit) {
-      setMousePos(floorHit.point);
+    const hits = raycaster.intersectObject(floorRef.current);
+    if (hits.length > 0) {
+      setMousePos(hits[0].point);
     }
   });
 
@@ -129,6 +129,7 @@ const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
   return (
     <>
       <Plane 
+        ref={floorRef}
         name="interaction-floor"
         args={[10000, 10000]} 
         rotation={[-Math.PI / 2, 0, 0]} 

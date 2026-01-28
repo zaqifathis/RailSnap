@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { glassStyle } from './glassStyle';
 import { ActionIcon } from './Icons';
 import { TRACK_TOOLS } from '../../constants/trackConfig';
-import { uiTheme } from '../../constants/theme'; //
+import { uiTheme, glassStyle } from '../../constants/theme'; //
 
 const Toolbar = ({ activeTool, onSelectTool, onSave, onLoad, onReset }) => {
   const [hovered, setHovered] = useState(null);

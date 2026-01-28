@@ -62,7 +62,7 @@ const Track = ({
       {type === 'STRAIGHT' && (
         <TrackStraight 
           ref={meshRef} 
-          raycast={type ? () => null : acceleratedRaycast}
+          raycast={isGhost ? () => null : undefined}
           isGhost={isGhost}
           isOccupied={isOccupied}
           isSnapped={isSnapped}
@@ -73,7 +73,7 @@ const Track = ({
         isLeft ? (<TrackCurvedLeft ref={meshRef} raycast={raycast} isGhost={isGhost} isOccupied={isOccupied} isSnapped={isSnapped} isSelected={isSelected}/>) : 
         (<TrackCurved 
           ref={meshRef} 
-          raycast={type ? () => null : acceleratedRaycast}
+          raycast={isGhost ? () => null : undefined}
           isGhost={isGhost} 
           isOccupied={isOccupied} 
           isSnapped={isSnapped}
@@ -83,7 +83,7 @@ const Track = ({
       {type === 'X_TRACK' && (
         <TrackCross60 
           ref={meshRef} 
-          raycast={type ? () => null : acceleratedRaycast}
+          raycast={isGhost ? () => null : undefined}
           isGhost={isGhost}
           isOccupied={isOccupied}
           isSnapped={isSnapped}
@@ -93,7 +93,7 @@ const Track = ({
       {type === 'Y_TRACK' && (
         <TrackYSwitch 
           ref={meshRef} 
-          raycast={type ? () => null : acceleratedRaycast}
+          raycast={isGhost ? () => null : undefined}
           isGhost={isGhost}
           isOccupied={isOccupied}
           isSnapped={isSnapped}
@@ -103,7 +103,7 @@ const Track = ({
       {type === 'CROSS_90' && (
         <TrackCross90 
           ref={meshRef} 
-          raycast={type ? () => null : acceleratedRaycast}
+          raycast={isGhost ? () => null : undefined}
           isGhost={isGhost}
           isOccupied={isOccupied}
           isSnapped={isSnapped}

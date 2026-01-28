@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { glassStyle } from './glassStyle';
-import { uiTheme } from '../../constants/theme';
+import { uiTheme , glassStyle} from '../../constants/theme';
 import LeftClick from '../../assets/icons/LeftClick.svg?react';
 import RightClick from '../../assets/icons/RightClick.svg?react';
 

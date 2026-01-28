@@ -1,6 +1,5 @@
 import * as ToggleGroup from '@radix-ui/react-toggle-group';
-import { glassStyle } from './glassStyle';
-import { uiTheme } from '../../constants/theme';
+import { uiTheme, glassStyle } from '../../constants/theme';
 
 const ViewToggle = ({ viewMode, setViewMode }) => {
   const itemStyle = (val) => {

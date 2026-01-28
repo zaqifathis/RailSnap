@@ -1,6 +1,5 @@
-import { glassStyle } from './glassStyle';
 import { TRACK_TOOLS } from '../../constants/trackConfig';
-import { uiTheme } from '../../constants/theme';
+import { uiTheme, glassStyle } from '../../constants/theme';
 
 const TrackCounter = ({ tracks = [] }) => {
   const containerStyle = {
