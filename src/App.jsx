@@ -62,6 +62,12 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  const updateTrackGeometry = (trackId, geometry) => {
+    setTracks(prev => prev.map(t => 
+      t.id === trackId ? { ...t, geometry } : t
+    ));
+  };
+
   // --- LOAD TRACKS ---
   const loadTracks = (event) => {
     const file = event.target.files[0];
@@ -165,6 +171,7 @@ function App() {
         tracks={tracks} 
         onPlaceTrack={addTrack}
         onDeleteTrack={deleteTrack}
+        onUpdateTrackGeometry={updateTrackGeometry}
       />
     </div>
   );

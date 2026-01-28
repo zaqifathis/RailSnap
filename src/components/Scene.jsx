@@ -48,7 +48,7 @@ const CameraController = ({ viewMode }) => {
 };
 
 
-const Scene = ({ viewMode, activeTool, tracks, onPlaceTrack, onDeleteTrack}) => {
+const Scene = ({ viewMode, activeTool, tracks, onPlaceTrack, onDeleteTrack, onUpdateTrackGeometry}) => {
   const [hoveredId, setHoveredId] = useState(null);
 
   return (
@@ -105,6 +105,7 @@ const Scene = ({ viewMode, activeTool, tracks, onPlaceTrack, onDeleteTrack}) => 
         <Track 
           key={track.id}
           {...track}
+          onGeometryReady={(geo) => onUpdateTrackGeometry(track.id, geo)}
           isSelected={hoveredId === track.id}
           onPointerOver={(e) => {
             e.stopPropagation();
