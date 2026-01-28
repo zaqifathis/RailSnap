@@ -3,9 +3,9 @@ import { Plane } from '@react-three/drei';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 
-import Track from './Track';
-import { checkTrackCollision } from '../utils/trackIntersection';
-import { getPortsTrack } from '../constants/trackPaths';
+import Track from '../Tracks/Track';
+import {checkTrackCollision} from './trackIntersection'
+import { getPortsTrack } from '../../constants/trackPaths';
 
 const InteractionHandler = ({ activeTool, tracks = [], onPlaceTrack }) => {
   const [isLeft, setIsLeft] = useState(false);

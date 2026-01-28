@@ -1,7 +1,7 @@
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, GizmoHelper, GizmoViewport, Environment } from '@react-three/drei';
-import { DUPLO_STUD } from '../constants/constants';
-import Track from './Track';
+import { DUPLO_STUD } from '../../constants/constants';
+import Track from '../Tracks/Track';
 import { useState, useEffect, useRef } from 'react';
 import InteractionHandler from './InteractionHandler';
 import { easing } from 'maath';

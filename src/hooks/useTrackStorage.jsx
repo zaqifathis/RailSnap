@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { getTrackPaths } from '../constants/trackPaths';
 
-export const useTrackStorage = () => {
-  const [tracks, setTracks] = useState([]);
+export const useTrackStorage = (tracks, setTracks) => {
 
   // --- SAVE LOGIC ---
   const saveTracks = () => {
@@ -15,7 +13,7 @@ export const useTrackStorage = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'my-rail-track.json';
+    link.download = 'my-rail-layout.json';
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -28,7 +26,7 @@ export const useTrackStorage = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const loaded = JSON.parse(e.target.result);
+        const loaded = JSON.parse(e.target.result);        
         const rehydrated = loaded.map(track => ({
           ...track,
           paths: getTrackPaths(track.type, track.isLeft)
@@ -43,5 +41,5 @@ export const useTrackStorage = () => {
     reader.readAsText(file);
   };
 
-  return { tracks, setTracks, saveTracks, loadTracks };
+  return { saveTracks, loadTracks };
 };

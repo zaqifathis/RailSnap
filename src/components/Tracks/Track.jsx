@@ -1,6 +1,5 @@
 import React, { useMemo, useRef, useEffect } from 'react';
 import { Line } from '@react-three/drei';
-import * as THREE from 'three';
 
 import {TrackStraight} from './models/TrackStraight';
 import { TrackCurved } from './models/TrackCurved';
@@ -9,8 +8,8 @@ import { TrackCurvedLeft } from './models/TrackCurvedLeft';
 import { TrackYSwitch } from './models/TrackYSwitch';
 import { TrackCross90 } from './models/TrackCross90';
 
-import { interactionColor, trackColors } from '../constants/theme';
-import { getTrackPaths } from '../constants/trackPaths';
+import { interactionColor, trackColors } from '../../constants/theme';
+import { getTrackPaths } from '../../constants/trackPaths';
 
 const Track = ({ 
   position= [0, 0, 0],
