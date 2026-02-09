@@ -6,35 +6,62 @@ export const useTrackStorage = (tracks, setTracks) => {
   
   // --- SAVE LOGIC ---
   const saveTracks = () => {
-    let remaining = [...tracks];
+   let remaining = [...tracks];
     const islands = [];
+    console.log(tracks)
 
     while (remaining.length > 0) {
       const island = [];
-      const root = remaining.shift(); 
+      const stackIds = [];
+      const visitedIds = new Set();
 
-      // Save Root with absolute position and rotation
+      // 1. Pick the Root
+      const priorityTypes = ["STRAIGHT", "CURVED"];
+      let rootIndex = remaining.findIndex(t => 
+        priorityTypes.includes(t.type) && 
+        Object.values(t.connections || {}).some(val => val === null)
+      );
+
+      // Fallback: If no prioritized track has a null, find ANY track with a null
+      if (rootIndex === -1) {
+        rootIndex = remaining.findIndex(t => 
+          Object.values(t.connections || {}).some(val => val === null)
+        );
+      }
+      // Last Resort: Just take the first track available (for closed loops)
+      if (rootIndex === -1) rootIndex = 0;
+      const root = remaining.splice(rootIndex, 1)[0];
+      visitedIds.add(root.id);
       island.push({
         ...serialize(root),
         position: root.position,
-        rotation: root.rotation
+        rotation: root.rotation,
       });
 
-      // Find all connected neighbors
-      const stack = [root];
-      while (stack.length > 0) {
-        const current = stack.pop();
-        const neighborIds = Object.values(current.connections || {}).filter(id => id !== null);
+      // 2. Load initial neighbors into stack
+      const initialNeighbors = Object.values(root.connections).filter(id => id !== null);
+      stackIds.push(...initialNeighbors);
 
-        neighborIds.forEach(id => {
-          const index = remaining.findIndex(t => t.id === id);
-          if (index !== -1) {
-            const neighbor = remaining.splice(index, 1)[0];
-            island.push(serialize(neighbor)); // No coords for children
-            stack.push(neighbor);
-          }
-        });
+      // 3. Crawl
+      while (stackIds.length > 0) {
+        const nid = stackIds.shift();
+        visitedIds.add(nid);
+        
+        // Find the track in 'remaining'
+        const targetIdx = remaining.findIndex(t => t.id === nid);
+
+        if (targetIdx !== -1) {
+          // Remove it so it's not crawled again or picked as a new root
+          const element = remaining.splice(targetIdx, 1)[0];
+          island.push(serialize(element));
+
+          // Add its neighbors to the stack
+          const nextNeighbors = Object.values(element.connections).filter(id => id !== null && !visitedIds.has(id));
+          stackIds.push(...nextNeighbors);
+        }
       }
+      console.log('visited: ', visitedIds)
+      console.log(island)
       islands.push(island);
     }
 

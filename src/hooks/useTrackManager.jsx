@@ -12,18 +12,26 @@ export const useTrackManager = (initialTracks = []) => {
   };
 
   const deleteTrack = (trackId) => {
-    setTracks(prevTracks => 
-      prevTracks
-        .filter(t => t.id !== trackId)
-        .map(t => {
-          if (!t.connections) return t;
+    setTracks(prevTracks => {
+      const filtered = prevTracks.filter(t => t.id !== trackId);
+
+      return filtered.map(t => {
+        if (!t.connections) return t;
+
+        const hasGhostConnection = Object.values(t.connections).includes(trackId);
+        
+        if (hasGhostConnection) {
           const newConnections = { ...t.connections };
-          Object.keys(newConnections).forEach(port => {
-            if (newConnections[port] === trackId) newConnections[port] = null;
+          Object.keys(newConnections).forEach(portKey => {
+            if (newConnections[portKey] === trackId) {
+              newConnections[portKey] = null;
+            }
           });
           return { ...t, connections: newConnections };
-        })
-    );
+        }
+        return t;
+      });
+    });
   };
 
   const addTrack = (type, position, rotation = 0, snapInfo = null, isLeftOverride = false, geometry) => {
