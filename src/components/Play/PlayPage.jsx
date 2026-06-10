@@ -31,13 +31,21 @@ const PlayPage = ({ tracks }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [resetSignal, setResetSignal] = useState(0);
+  // Y-switch lever states: trackId → 'left' | 'right'. Main line is left.
+  const [switches, setSwitches] = useState({});
 
-  const route = useMemo(() => buildRoute(tracks), [tracks]);
+  const route = useMemo(() => buildRoute(tracks, { switches }), [tracks, switches]);
 
   const handleStop = () => {
     setIsPlaying(false);
     setResetSignal((n) => n + 1);
   };
+
+  const toggleSwitch = (trackId) =>
+    setSwitches((prev) => ({
+      ...prev,
+      [trackId]: prev[trackId] === 'right' ? 'left' : 'right',
+    }));
 
   return (
     <>
@@ -47,6 +55,8 @@ const PlayPage = ({ tracks }) => {
         isPlaying={isPlaying}
         speed={speed}
         resetSignal={resetSignal}
+        switches={switches}
+        onToggleSwitch={toggleSwitch}
       />
       {!route && <EmptyHint />}
       <ControlBar

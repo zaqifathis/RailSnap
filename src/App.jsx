@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 
 import Scene from './components/Three/Scene';
 import Toolbar from './components/UI/Toolbar';
-import TrackCounter from './components/UI/TrackCounter';
 import ViewToggle from './components/UI/ViewToggle';
 import HelpMenu from './components/UI/HelpMenu';
 import Header from './components/UI/Header';
@@ -32,13 +31,13 @@ function App() {
 
       {page === 'editor' ? (
         <>
-          <TrackCounter tracks={tracks} />
           <Toolbar
             activeTool={activeTool}
             onSelectTool={setActiveTool}
             onSave={saveTracks}
             onLoad={loadTracks}
             onReset={resetTracks}
+            tracks={tracks}
           />
           <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
           <HelpMenu />

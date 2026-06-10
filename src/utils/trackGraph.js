@@ -1,12 +1,14 @@
 import { getPortsTrack } from '../constants/trackPaths';
-import { getAnchorPort, portToWorld, UP } from './transforms';
+import { portToWorld, UP } from './transforms';
 
 const connectedIds = (track) => Object.values(track.connections || {}).filter(Boolean);
 const hasOpenPort = (track) => Object.values(track.connections || {}).some((v) => v === null);
 
 /**
  * Creates a track object with its connections initialized.
- * If snapInfo is given, the anchor port is connected to the parent track.
+ * Each alignment ({ ghostPortId, parentId, parentPortId }) links one of the
+ * new track's ports to the neighbouring track it touches — a piece that
+ * closes a loop touches several neighbours at once.
  */
 export const createTrack = ({
   id,
@@ -14,7 +16,7 @@ export const createTrack = ({
   position,
   rotation = 0,
   isLeft = false,
-  snapInfo = null,
+  alignments = [],
   geometry = null,
 }) => {
   const connections = {};
@@ -22,23 +24,32 @@ export const createTrack = ({
     connections[port.id] = null;
   });
 
-  if (snapInfo) {
-    const anchor = getAnchorPort(type, isLeft, snapInfo.ghostPortIndex ?? 0);
-    if (anchor) connections[anchor.id] = snapInfo.parentId;
-  }
+  alignments.forEach((a) => {
+    if (a.ghostPortId in connections) connections[a.ghostPortId] = a.parentId;
+  });
 
   return { id, type, isLeft, position, rotation, geometry, connections };
 };
 
-/** Appends a track; if snapped, also links the parent's port back to it. */
-export const addTrackToLayout = (tracks, newTrack, snapInfo = null) => {
-  const updated = snapInfo
-    ? tracks.map((t) =>
-        t.id === snapInfo.parentId
-          ? { ...t, connections: { ...(t.connections || {}), [snapInfo.id]: newTrack.id } }
-          : t
-      )
-    : tracks;
+/** Appends a track and links every touched parent port back to it. */
+export const addTrackToLayout = (tracks, newTrack, alignments = []) => {
+  if (alignments.length === 0) return [...tracks, newTrack];
+
+  const byParent = new Map();
+  alignments.forEach((a) => {
+    if (!byParent.has(a.parentId)) byParent.set(a.parentId, []);
+    byParent.get(a.parentId).push(a);
+  });
+
+  const updated = tracks.map((t) => {
+    const touched = byParent.get(t.id);
+    if (!touched) return t;
+    const connections = { ...(t.connections || {}) };
+    touched.forEach((a) => {
+      connections[a.parentPortId] = newTrack.id;
+    });
+    return { ...t, connections };
+  });
   return [...updated, newTrack];
 };
 
@@ -120,6 +131,9 @@ export const rehydrateIslands = (islands) => {
       position: island[0].position ?? [0, 0, 0],
       rotation: island[0].rotation ?? 0,
     };
+    // Unknown track type (corrupt or newer file): skip the whole island,
+    // its geometry cannot be reconstructed.
+    if (getPortsTrack(root.type, root.isLeft).length === 0) return;
     rehydrated.push(root);
 
     const placed = new Set([root.id]);
@@ -154,4 +168,24 @@ export const rehydrateIslands = (islands) => {
   });
 
   return rehydrated;
+};
+
+export const LAYOUT_FORMAT = 'railsnap-layout';
+export const LAYOUT_VERSION = 1;
+
+/** Wraps the serialized islands in a versioned envelope for saving. */
+export const serializeLayout = (tracks) => ({
+  format: LAYOUT_FORMAT,
+  version: LAYOUT_VERSION,
+  savedAt: new Date().toISOString(),
+  islands: serializeIslands(tracks),
+});
+
+/** Loads a layout file: versioned envelope or a legacy bare islands array. */
+export const rehydrateLayout = (data) => {
+  const islands = Array.isArray(data) ? data : data?.islands;
+  if (!Array.isArray(islands)) {
+    throw new Error('Invalid layout file: expected islands array');
+  }
+  return rehydrateIslands(islands);
 };

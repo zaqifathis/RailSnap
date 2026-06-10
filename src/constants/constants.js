@@ -11,6 +11,9 @@ export const DUPLO_STUD = 2 * STUD; // 16mm
 // Straights are 8 studs long (effective length)
 export const STRAIGHT_LENGTH = 8 * DUPLO_STUD; // 127.800mm length
 
+// Rail piece width (2.5 Duplo studs = 40mm)
+export const TRACK_WIDTH = 2.5 * DUPLO_STUD;
+
 // TODO: fix the radius
 export const CURVE_RADIUS = 16.165 * DUPLO_STUD;    // 127.980mm length
 

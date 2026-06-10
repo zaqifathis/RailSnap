@@ -1,4 +1,4 @@
-import { serializeIslands, rehydrateIslands } from '../utils/trackGraph';
+import { serializeLayout, rehydrateLayout } from '../utils/trackGraph';
 
 const downloadJson = (data, filename) => {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -12,7 +12,7 @@ const downloadJson = (data, filename) => {
 
 export const useTrackStorage = (tracks, setTracks) => {
   const saveTracks = () => {
-    downloadJson(serializeIslands(tracks), 'rail-layout.json');
+    downloadJson(serializeLayout(tracks), 'rail-layout.json');
   };
 
   const loadTracks = (event) => {
@@ -23,7 +23,7 @@ export const useTrackStorage = (tracks, setTracks) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        setTracks(rehydrateIslands(JSON.parse(e.target.result)));
+        setTracks(rehydrateLayout(JSON.parse(e.target.result)));
       } catch (err) {
         console.error('Failed to load layout:', err);
       } finally {

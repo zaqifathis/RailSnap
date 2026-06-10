@@ -28,6 +28,8 @@ const Track = ({
   onPointerOut,
   onGeometryReady,
   onClick,
+  switchDirection,
+  onSwitchClick,
 }) => {
   const meshRef = useRef();
 
@@ -56,6 +58,8 @@ const Track = ({
         isOccupied={isOccupied}
         isSnapped={isSnapped}
         isSelected={isSelected}
+        switchDirection={switchDirection}
+        onSwitchClick={onSwitchClick}
       />
 
       {trackLineStyle.visible &&

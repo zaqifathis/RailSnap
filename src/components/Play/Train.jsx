@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { useRef, useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { sampleRoute } from '../../utils/trainRoute';
+import { sampleRoute, nearestRouteDistance } from '../../utils/trainRoute';
 
 /** Train speed in mm/s at slider value 1 (one straight piece per second). */
 const BASE_SPEED = 130;
@@ -99,6 +99,7 @@ const Train = ({ route, isPlaying, speed, resetSignal }) => {
   const locoWheelsRef = useRef();
   const wagonWheelsRef = useRef();
   const distanceRef = useRef(CAR_GAP);
+  const lastWorldPos = useRef(null);
 
   const scratch = useMemo(
     () => ({ pos: new THREE.Vector3(), tan: new THREE.Vector3() }),
@@ -107,7 +108,21 @@ const Train = ({ route, isPlaying, speed, resetSignal }) => {
 
   useEffect(() => {
     distanceRef.current = CAR_GAP;
-  }, [resetSignal, route]);
+    lastWorldPos.current = null;
+  }, [resetSignal]);
+
+  // Route rebuilt mid-ride (a switch flipped, track edited): keep the
+  // train where it stands by remapping its position onto the new route.
+  useEffect(() => {
+    if (route && lastWorldPos.current) {
+      distanceRef.current = Math.max(
+        nearestRouteDistance(route, lastWorldPos.current),
+        route.isLoop ? 0 : CAR_GAP
+      );
+    } else {
+      distanceRef.current = CAR_GAP;
+    }
+  }, [route]);
 
   const placeCar = (ref, wheels, distance, delta) => {
     if (!ref.current) return;
@@ -136,6 +151,8 @@ const Train = ({ route, isPlaying, speed, resetSignal }) => {
     }
 
     placeCar(locoRef, locoWheelsRef, distanceRef.current, delta);
+    if (!lastWorldPos.current) lastWorldPos.current = new THREE.Vector3();
+    lastWorldPos.current.copy(scratch.pos);
     placeCar(wagonRef, wagonWheelsRef, distanceRef.current - CAR_GAP, delta);
   });
 

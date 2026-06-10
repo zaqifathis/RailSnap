@@ -13,9 +13,9 @@ const Header = ({ page, onPageChange }) => {
       all: 'unset',
       backgroundColor: isActive ? uiTheme.accent : 'transparent',
       color: isActive ? uiTheme.background : uiTheme.secondary,
-      padding: '7px 16px',
+      padding: '7px 18px',
       borderRadius: '999px',
-      fontSize: '12px',
+      fontSize: '13px',
       fontWeight: 'bold',
       cursor: 'pointer',
       display: 'flex',
@@ -25,44 +25,54 @@ const Header = ({ page, onPageChange }) => {
   };
 
   return (
-    <header
-      style={{
-        ...glassStyle,
-        position: 'absolute',
-        top: '20px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        alignItems: 'center',
-        gap: '14px',
-        padding: '6px 8px 6px 18px',
-        zIndex: 1100,
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
-        <span style={{ fontWeight: 800, fontSize: '15px', color: uiTheme.background, letterSpacing: '-0.3px' }}>
-          Rail
-        </span>
-        <span style={{ fontWeight: 800, fontSize: '15px', color: uiTheme.accent, letterSpacing: '-0.3px' }}>
-          Snap
-        </span>
+    <>
+      {/* App name: plain wordmark, top left, outside any capsule. */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '24px',
+          left: '28px',
+          zIndex: 1100,
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          fontWeight: 800,
+          fontSize: '26px',
+          letterSpacing: '-0.6px',
+          color: '#000000',
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}
+      >
+        RailSnap
       </div>
 
-      <div style={{ width: '1px', height: '20px', backgroundColor: 'rgba(0,0,0,0.15)' }} />
-
-      <ToggleGroup.Root
-        type="single"
-        value={page}
-        onValueChange={(value) => value && onPageChange(value)}
-        style={{ display: 'flex', gap: '4px' }}
+      {/* Page switcher capsule, centered. */}
+      <header
+        style={{
+          ...glassStyle,
+          position: 'absolute',
+          top: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          alignItems: 'center',
+          padding: '6px 8px',
+          zIndex: 1100,
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+        }}
       >
-        {PAGES.map(({ id, label }) => (
-          <ToggleGroup.Item key={id} value={id} style={itemStyle(id)}>
-            {label}
-          </ToggleGroup.Item>
-        ))}
-      </ToggleGroup.Root>
-    </header>
+        <ToggleGroup.Root
+          type="single"
+          value={page}
+          onValueChange={(value) => value && onPageChange(value)}
+          style={{ display: 'flex', gap: '4px' }}
+        >
+          {PAGES.map(({ id, label }) => (
+            <ToggleGroup.Item key={id} value={id} style={itemStyle(id)}>
+              {label}
+            </ToggleGroup.Item>
+          ))}
+        </ToggleGroup.Root>
+      </header>
+    </>
   );
 };
 

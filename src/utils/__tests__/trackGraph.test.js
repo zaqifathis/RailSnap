@@ -5,6 +5,9 @@ import {
   removeTrackFromLayout,
   serializeIslands,
   rehydrateIslands,
+  serializeLayout,
+  rehydrateLayout,
+  LAYOUT_FORMAT,
 } from '../trackGraph';
 import { STRAIGHT_LENGTH } from '../../constants/constants';
 
@@ -31,42 +34,39 @@ describe('createTrack', () => {
     expect(t.connections).toEqual({ a_start: null, b_start: null, a_end: null, b_end: null });
   });
 
-  it('connects the anchor port to the parent when snapped', () => {
+  it('connects aligned ports to their parents', () => {
     const t = createTrack({
       id: 't1',
       type: 'STRAIGHT',
       position: [0, 0, 0],
-      snapInfo: { parentId: 'p1', id: 'end', ghostPortIndex: 0 },
+      alignments: [{ ghostPortId: 'start', parentId: 'p1', parentPortId: 'end' }],
     });
     expect(t.connections.start).toBe('p1');
     expect(t.connections.end).toBeNull();
   });
 
-  it('cycles the Y track anchor port with ghostPortIndex', () => {
-    const make = (i) =>
-      createTrack({
-        id: 't1',
-        type: 'Y_TRACK',
-        position: [0, 0, 0],
-        snapInfo: { parentId: 'p1', id: 'end', ghostPortIndex: i },
-      });
-    expect(make(0).connections.start).toBe('p1');
-    expect(make(1).connections.end_left).toBe('p1');
-    expect(make(2).connections.end_right).toBe('p1');
-    expect(make(3).connections.start).toBe('p1'); // wraps around
+  it('connects several ports at once when closing a loop', () => {
+    const t = createTrack({
+      id: 't1',
+      type: 'STRAIGHT',
+      position: [0, 0, 0],
+      alignments: [
+        { ghostPortId: 'start', parentId: 'p1', parentPortId: 'end' },
+        { ghostPortId: 'end', parentId: 'p2', parentPortId: 'start' },
+      ],
+    });
+    expect(t.connections.start).toBe('p1');
+    expect(t.connections.end).toBe('p2');
   });
 
-  it('cycles only the two entry ports for crossings', () => {
-    const make = (type, i) =>
-      createTrack({
-        id: 't1',
-        type,
-        position: [0, 0, 0],
-        snapInfo: { parentId: 'p1', id: 'end', ghostPortIndex: i },
-      });
-    expect(make('X_TRACK', 0).connections.a_start).toBe('p1');
-    expect(make('X_TRACK', 1).connections.b_start).toBe('p1');
-    expect(make('CROSS_90', 2).connections.a_start).toBe('p1'); // wraps around
+  it('ignores alignments naming ports the track does not have', () => {
+    const t = createTrack({
+      id: 't1',
+      type: 'STRAIGHT',
+      position: [0, 0, 0],
+      alignments: [{ ghostPortId: 'nope', parentId: 'p1', parentPortId: 'end' }],
+    });
+    expect(t.connections).toEqual({ start: null, end: null });
   });
 });
 
@@ -77,13 +77,36 @@ describe('addTrackToLayout', () => {
       id: 'c1',
       type: 'STRAIGHT',
       position: [0, 0, STRAIGHT_LENGTH],
-      snapInfo: { parentId: 'p1', id: 'end', ghostPortIndex: 0 },
+      alignments: [{ ghostPortId: 'start', parentId: 'p1', parentPortId: 'end' }],
     });
-    const layout = addTrackToLayout([parent], child, { parentId: 'p1', id: 'end' });
+    const layout = addTrackToLayout([parent], child, [
+      { ghostPortId: 'start', parentId: 'p1', parentPortId: 'end' },
+    ]);
 
     expect(layout).toHaveLength(2);
     expect(layout[0].connections.end).toBe('c1');
     expect(parent.connections.end).toBeNull(); // input not mutated
+  });
+
+  it('links every touched parent when closing a loop', () => {
+    const a = straight('a');
+    const b = straight('b', [0, 0, 2 * STRAIGHT_LENGTH]);
+    const closer = createTrack({
+      id: 'c1',
+      type: 'STRAIGHT',
+      position: [0, 0, STRAIGHT_LENGTH],
+      alignments: [
+        { ghostPortId: 'start', parentId: 'a', parentPortId: 'end' },
+        { ghostPortId: 'end', parentId: 'b', parentPortId: 'start' },
+      ],
+    });
+    const layout = addTrackToLayout([a, b], closer, [
+      { ghostPortId: 'start', parentId: 'a', parentPortId: 'end' },
+      { ghostPortId: 'end', parentId: 'b', parentPortId: 'start' },
+    ]);
+
+    expect(layout.find((t) => t.id === 'a').connections.end).toBe('c1');
+    expect(layout.find((t) => t.id === 'b').connections.start).toBe('c1');
   });
 
   it('appends without touching others when unsnapped', () => {
@@ -272,5 +295,51 @@ describe('rehydrateIslands', () => {
       expect(t.position[2]).toBeCloseTo(orig.position[2], 4);
       expect(normalizeAngle(t.rotation - orig.rotation)).toBeCloseTo(0, 4);
     });
+  });
+
+  it('skips islands whose root has an unknown track type', () => {
+    const islands = [
+      [{ id: 'a', type: 'WARP_GATE', connections: {}, position: [0, 0, 0], rotation: 0 }],
+      [{ id: 'b', type: 'STRAIGHT', connections: { start: null, end: null }, position: [9, 0, 0], rotation: 0 }],
+    ];
+    const loaded = rehydrateIslands(islands);
+    expect(loaded.map((t) => t.id)).toEqual(['b']);
+  });
+});
+
+describe('serializeLayout / rehydrateLayout', () => {
+  it('wraps islands in a versioned envelope', () => {
+    const layout = serializeLayout([straight('a')]);
+    expect(layout.format).toBe(LAYOUT_FORMAT);
+    expect(layout.version).toBe(1);
+    expect(typeof layout.savedAt).toBe('string');
+    expect(layout.islands).toHaveLength(1);
+  });
+
+  it('round-trips two separate tracks as two islands', () => {
+    const a = straight('a', [0, 0, 0], 0);
+    const b = straight('b', [500, 0, 300], Math.PI / 2);
+
+    const saved = serializeLayout([a, b]);
+    expect(saved.islands).toHaveLength(2);
+
+    const loaded = rehydrateLayout(JSON.parse(JSON.stringify(saved)));
+    expect(loaded).toHaveLength(2);
+
+    const lb = loaded.find((t) => t.id === 'b');
+    expect(lb.position[0]).toBeCloseTo(500);
+    expect(lb.position[2]).toBeCloseTo(300);
+    expect(normalizeAngle(lb.rotation - Math.PI / 2)).toBeCloseTo(0);
+  });
+
+  it('accepts legacy files that are a bare islands array', () => {
+    const legacy = serializeIslands([straight('a')]);
+    expect(rehydrateLayout(legacy)).toHaveLength(1);
+  });
+
+  it('rejects files without an islands array', () => {
+    expect(() => rehydrateLayout({})).toThrow();
+    expect(() => rehydrateLayout({ islands: 'nope' })).toThrow();
+    expect(() => rehydrateLayout(null)).toThrow();
   });
 });

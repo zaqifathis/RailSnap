@@ -1,5 +1,6 @@
-import { forwardRef, useEffect } from 'react';
-import { useGLTF } from '@react-three/drei';
+import * as THREE from 'three';
+import { forwardRef, useEffect, useState } from 'react';
+import { useGLTF, useCursor } from '@react-three/drei';
 import { interactionColor, trackModelStyle } from '../../../constants/theme';
 import { TRACK_MODELS, getTrackModelConfig } from '../../../constants/trackConfig';
 
@@ -8,6 +9,50 @@ const getMaterialColor = ({ isOccupied, isSnapped, isSelected }) => {
   if (isSnapped) return interactionColor.snap;
   if (isSelected) return interactionColor.selected;
   return interactionColor.default;
+};
+
+/**
+ * The GLB's own red switch piece. When onSwitchClick is given (play mode)
+ * it becomes the clickable lever; 'left' mirrors the mesh across the
+ * track centerline so it points at the branch the main line takes.
+ */
+const SwitchMesh = ({ node, isGhost, raycast, direction, onSwitchClick }) => {
+  const [hovered, setHovered] = useState(false);
+  const interactive = Boolean(onSwitchClick);
+  useCursor(interactive && hovered);
+
+  return (
+    <mesh
+      raycast={raycast}
+      name={node.name}
+      castShadow
+      receiveShadow
+      geometry={node.geometry}
+      material={node.material}
+      scale={[direction === 'left' ? -1 : 1, 1, 1]}
+      onClick={
+        interactive
+          ? (e) => {
+              e.stopPropagation();
+              onSwitchClick();
+            }
+          : undefined
+      }
+      onPointerOver={
+        interactive
+          ? (e) => {
+              e.stopPropagation();
+              setHovered(true);
+            }
+          : undefined
+      }
+      onPointerOut={interactive ? () => setHovered(false) : undefined}
+    >
+      {isGhost && (
+        <meshStandardMaterial map={node.material?.map} transparent opacity={trackModelStyle.ghostOpacity} />
+      )}
+    </mesh>
+  );
 };
 
 /** Renders the GLB model for any track type and prepares its BVH for collision checks. */
@@ -20,6 +65,8 @@ export const TrackModel = forwardRef(
       isOccupied = false,
       isSnapped = false,
       isSelected = false,
+      switchDirection,
+      onSwitchClick,
       ...props
     },
     ref
@@ -33,7 +80,14 @@ export const TrackModel = forwardRef(
       const geo = mainNode.geometry;
       if (!geo.boundsTree) geo.computeBoundsTree();
       if (!geo.boundingBox) geo.computeBoundingBox();
-    }, [mainNode]);
+
+      // Switch meshes get mirrored (scale -1) to show the lever state;
+      // that flips triangle winding, so render both faces.
+      (config.extraNodes || []).forEach((name) => {
+        const material = nodes[name]?.material;
+        if (material) material.side = THREE.DoubleSide;
+      });
+    }, [mainNode, nodes, config.extraNodes]);
 
     if (!mainNode) return null;
 
@@ -63,23 +117,14 @@ export const TrackModel = forwardRef(
         </mesh>
 
         {(config.extraNodes || []).map((name) => (
-          <mesh
+          <SwitchMesh
             key={name}
+            node={nodes[name]}
+            isGhost={isGhost}
             raycast={raycast}
-            name={name}
-            castShadow
-            receiveShadow
-            geometry={nodes[name].geometry}
-            material={nodes[name].material}
-          >
-            {isGhost && (
-              <meshStandardMaterial
-                map={nodes[name].material?.map}
-                transparent
-                opacity={trackModelStyle.ghostOpacity}
-              />
-            )}
-          </mesh>
+            direction={switchDirection}
+            onSwitchClick={onSwitchClick}
+          />
         ))}
       </group>
     );

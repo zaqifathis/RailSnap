@@ -5,7 +5,7 @@ import Track from '../Tracks/Track';
 import Train from './Train';
 
 /** 3D-only scene for play mode: static track layout plus the animated train. */
-const PlayScene = ({ tracks, route, isPlaying, speed, resetSignal }) => (
+const PlayScene = ({ tracks, route, isPlaying, speed, resetSignal, switches, onToggleSwitch }) => (
   <Canvas
     shadows
     dpr={[1, 2]}
@@ -53,6 +53,8 @@ const PlayScene = ({ tracks, route, isPlaying, speed, resetSignal }) => (
         position={track.position}
         rotation={track.rotation}
         isLeft={track.isLeft}
+        switchDirection={track.type === 'Y_TRACK' ? switches[track.id] ?? 'left' : undefined}
+        onSwitchClick={track.type === 'Y_TRACK' ? () => onToggleSwitch(track.id) : undefined}
       />
     ))}
 

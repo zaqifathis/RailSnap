@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { findSnapTarget, computeGhostState, SNAP_DISTANCE } from '../ghostPlacement';
+import { findSnapTarget, computeGhostState, SNAP_DISTANCE, JOIN_DISTANCE } from '../ghostPlacement';
 import { getAnchorPort, getWorldPorts, portToWorld } from '../transforms';
 import { STRAIGHT_LENGTH } from '../../constants/constants';
 
@@ -93,7 +93,7 @@ describe('computeGhostState', () => {
     expect(state.pos[2]).toBeCloseTo(500);
     expect(state.isSnapped).toBe(false);
     expect(state.isOccupied).toBe(false);
-    expect(state.snapInfo).toBeNull();
+    expect(state.alignments).toEqual([]);
   });
 
   it('snaps a straight ghost onto an open end port, aligned with the parent', () => {
@@ -109,11 +109,60 @@ describe('computeGhostState', () => {
 
     expect(state.isSnapped).toBe(true);
     expect(state.isOccupied).toBe(false);
-    expect(state.snapInfo.parentId).toBe('a');
-    expect(state.snapInfo.id).toBe('end');
+    expect(state.alignments).toHaveLength(1);
+    expect(state.alignments[0]).toMatchObject({
+      ghostPortId: 'start',
+      parentId: 'a',
+      parentPortId: 'end',
+    });
     expect(state.pos[0]).toBeCloseTo(0);
     expect(state.pos[2]).toBeCloseTo(STRAIGHT_LENGTH);
     expect(normalizeAngle(state.rot)).toBeCloseTo(0);
+  });
+
+  it('magnetically joins when a non-anchor port is pushed near an open port', () => {
+    const a = straight('a'); // ports at z=0 and z=L
+    // Cursor sits a full track length before the layout, so the cursor
+    // itself is far from any port — but the ghost's far (end) port lands
+    // within JOIN_DISTANCE of a.start and must get pulled in.
+    const state = computeGhostState({
+      activeTool: 'STRAIGHT',
+      isLeft: false,
+      ghostPortIndex: 0,
+      mousePos: new THREE.Vector3(5, 0, -STRAIGHT_LENGTH - JOIN_DISTANCE / 2),
+      tracks: [a],
+      ghostGeometry: null,
+    });
+
+    expect(state.isSnapped).toBe(true);
+    expect(state.alignments).toHaveLength(1);
+    expect(state.alignments[0]).toMatchObject({
+      ghostPortId: 'end',
+      parentId: 'a',
+      parentPortId: 'start',
+    });
+    expect(state.pos[0]).toBeCloseTo(0);
+    expect(state.pos[2]).toBeCloseTo(-STRAIGHT_LENGTH);
+  });
+
+  it('reports every aligned port when the ghost closes a gap', () => {
+    const a = straight('a'); // ends at z=L
+    const b = straight('b', [0, 0, 2 * STRAIGHT_LENGTH]); // starts at z=2L
+    const state = computeGhostState({
+      activeTool: 'STRAIGHT',
+      isLeft: false,
+      ghostPortIndex: 0,
+      mousePos: new THREE.Vector3(0, 0, STRAIGHT_LENGTH),
+      tracks: [a, b],
+      ghostGeometry: null,
+    });
+
+    expect(state.isSnapped).toBe(true);
+    expect(state.isOccupied).toBe(false);
+    expect(state.alignments).toHaveLength(2);
+    const byParent = Object.fromEntries(state.alignments.map((al) => [al.parentId, al]));
+    expect(byParent.a).toMatchObject({ ghostPortId: 'start', parentPortId: 'end' });
+    expect(byParent.b).toMatchObject({ ghostPortId: 'end', parentPortId: 'start' });
   });
 
   it('marks the ghost occupied when snapping to a connected port', () => {
@@ -142,8 +191,8 @@ describe('computeGhostState', () => {
     const s0 = computeGhostState({ ...base, ghostPortIndex: 0 });
     const s1 = computeGhostState({ ...base, ghostPortIndex: 1 });
 
-    expect(s0.snapInfo.ghostPortIndex).toBe(0);
-    expect(s1.snapInfo.ghostPortIndex).toBe(1);
+    expect(s0.alignments[0].ghostPortId).toBe('start');
+    expect(s1.alignments[0].ghostPortId).toBe('end_left');
     expect(normalizeAngle(s0.rot - s1.rot)).not.toBeCloseTo(0);
   });
 

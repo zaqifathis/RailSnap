@@ -22,7 +22,7 @@ export const useTrackManager = (initialTracks = []) => {
   }, []);
 
   const addTrack = useCallback(
-    (type, position, rotation = 0, snapInfo = null, isLeft = false, geometry = null) => {
+    (type, position, rotation = 0, alignments = [], isLeft = false, geometry = null) => {
       setTracks((prev) => {
         const newTrack = createTrack({
           id: generateUUID(),
@@ -30,10 +30,10 @@ export const useTrackManager = (initialTracks = []) => {
           position,
           rotation,
           isLeft,
-          snapInfo,
+          alignments,
           geometry,
         });
-        return addTrackToLayout(prev, newTrack, snapInfo);
+        return addTrackToLayout(prev, newTrack, alignments);
       });
     },
     []
