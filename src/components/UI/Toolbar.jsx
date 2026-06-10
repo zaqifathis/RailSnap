@@ -52,9 +52,9 @@ const Toolbar = ({ activeTool, onSelectTool, onSave, onLoad, onReset }) => {
         </div>
       </div>
 
-      {/* SECTION 2: File Management (RIGHT) */}
-      <div style={{ position: 'absolute', top: '50%', right: '20px', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', gap: '20px', zIndex: 1000 }}>
-        <div style={{ ...glassStyle, padding: '10px 6px', flexDirection: 'column', gap: '8px' }}>
+      {/* SECTION 2: File Management (TOP RIGHT) */}
+      <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', zIndex: 1000 }}>
+        <div style={{ ...glassStyle, padding: '6px 10px', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
           {['reset', 'save', 'load'].map((type) => (
             <button 
               key={type}

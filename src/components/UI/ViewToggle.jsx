@@ -26,7 +26,7 @@ const ViewToggle = ({ viewMode, setViewMode }) => {
       type="single"
       value={viewMode}
       onValueChange={(value) => { if (value) setViewMode(value); }}
-      style={{ ...glassStyle, position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)', padding: '4px 15px', gap: '4px', zIndex: 1000 }}
+      style={{ ...glassStyle, position: 'absolute', bottom: '30px', left: '30px', padding: '4px 8px', gap: '4px', zIndex: 1000 }}
     >
       <ToggleGroup.Item value="2D" style={itemStyle("2D")}>2D</ToggleGroup.Item>
       <ToggleGroup.Item value="3D" style={itemStyle("3D")}>3D</ToggleGroup.Item>

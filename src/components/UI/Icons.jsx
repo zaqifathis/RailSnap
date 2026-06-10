@@ -36,6 +36,33 @@ export const Cross90Icon = () => (
 );
 
 
+export const PlayIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <polygon points="6 3 21 12 6 21" />
+  </svg>
+);
+
+export const PauseIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <rect x="5" y="4" width="5" height="16" rx="1.5" />
+    <rect x="14" y="4" width="5" height="16" rx="1.5" />
+  </svg>
+);
+
+export const StopIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <rect x="5" y="5" width="14" height="14" rx="2" />
+  </svg>
+);
+
+export const HornIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 10v4a1 1 0 0 0 1 1h3l5 4V5L7 9H4a1 1 0 0 0-1 1z" fill="currentColor" stroke="none" />
+    <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+    <path d="M18.5 6a9 9 0 0 1 0 12" />
+  </svg>
+);
+
 export const ActionIcon = ({ type }) => {
   if (type === 'reset') return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
