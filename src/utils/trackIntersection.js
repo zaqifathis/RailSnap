@@ -1,4 +1,3 @@
-// src/utils/trackIntersection.js
 import * as THREE from 'three';
 
 const areBoundsTouching = (ghostWorldBox, track) => {

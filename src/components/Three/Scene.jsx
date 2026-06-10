@@ -102,9 +102,12 @@ const Scene = ({ viewMode, activeTool, tracks, onPlaceTrack, onDeleteTrack, onUp
       />
 
       {tracks.map(track => (
-        <Track 
+        <Track
           key={track.id}
-          {...track}
+          type={track.type}
+          position={track.position}
+          rotation={track.rotation}
+          isLeft={track.isLeft}
           onGeometryReady={(geo) => onUpdateTrackGeometry(track.id, geo)}
           isSelected={hoveredId === track.id}
           onPointerOver={(e) => {
@@ -119,10 +122,11 @@ const Scene = ({ viewMode, activeTool, tracks, onPlaceTrack, onDeleteTrack, onUp
         />
       ))}
 
-      <InteractionHandler 
-        activeTool={activeTool} 
-        tracks={tracks} 
-        onPlaceTrack={onPlaceTrack} 
+      <InteractionHandler
+        key={activeTool ?? 'none'}
+        activeTool={activeTool}
+        tracks={tracks}
+        onPlaceTrack={onPlaceTrack}
       />
     </Canvas>
   );

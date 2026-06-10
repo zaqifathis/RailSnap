@@ -1,84 +1,43 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { generateUUID } from 'three/src/math/MathUtils.js';
-import { getPortsTrack } from '../constants/trackPaths';
+import { createTrack, addTrackToLayout, removeTrackFromLayout } from '../utils/trackGraph';
 
 export const useTrackManager = (initialTracks = []) => {
   const [tracks, setTracks] = useState(initialTracks);
 
-  const updateTrackGeometry = (trackId, geometry) => {
-    setTracks(prev => prev.map(t => 
-      t.id === trackId ? { ...t, geometry } : t
-    ));
-  };
-
-  const deleteTrack = (trackId) => {
-    setTracks(prevTracks => {
-      const filtered = prevTracks.filter(t => t.id !== trackId);
-
-      return filtered.map(t => {
-        if (!t.connections) return t;
-
-        const hasGhostConnection = Object.values(t.connections).includes(trackId);
-        
-        if (hasGhostConnection) {
-          const newConnections = { ...t.connections };
-          Object.keys(newConnections).forEach(portKey => {
-            if (newConnections[portKey] === trackId) {
-              newConnections[portKey] = null;
-            }
-          });
-          return { ...t, connections: newConnections };
-        }
-        return t;
-      });
+  const updateTrackGeometry = useCallback((trackId, geometry) => {
+    setTracks((prev) => {
+      const index = prev.findIndex((t) => t.id === trackId);
+      // Bail out when nothing changes, otherwise the geometry-ready
+      // callback in Track retriggers this on every render (infinite loop).
+      if (index === -1 || prev[index].geometry === geometry) return prev;
+      const next = [...prev];
+      next[index] = { ...next[index], geometry };
+      return next;
     });
-  };
+  }, []);
 
-  const addTrack = (type, position, rotation = 0, snapInfo = null, isLeftOverride = false, geometry) => {
-    const newId = generateUUID();
+  const deleteTrack = useCallback((trackId) => {
+    setTracks((prev) => removeTrackFromLayout(prev, trackId));
+  }, []);
 
-    setTracks((prevTracks) => {
-      // Logic for connecting to parent
-      let updatedTracks = prevTracks.map((t) => {
-        if (snapInfo && t.id === snapInfo.parentId) {
-          return {
-            ...t, connections: { ...(t.connections || {}), [snapInfo.id]: newId }
-          };
-        }
-        return t;
+  const addTrack = useCallback(
+    (type, position, rotation = 0, snapInfo = null, isLeft = false, geometry = null) => {
+      setTracks((prev) => {
+        const newTrack = createTrack({
+          id: generateUUID(),
+          type,
+          position,
+          rotation,
+          isLeft,
+          snapInfo,
+          geometry,
+        });
+        return addTrackToLayout(prev, newTrack, snapInfo);
       });
-
-      // Logic for initializing new track connections
-      const allAvailablePorts = getPortsTrack(type, isLeftOverride);
-      const initialConnections = {};
-      allAvailablePorts.forEach(port => { initialConnections[port.id] = null; });
-
-      if (snapInfo) {
-        // Logic for determining the primary port (Y or X track specific)
-        let primaryPortId = 'start';
-        if (type === 'Y_TRACK') {
-          const yPorts = ['start', 'end_left', 'end_right'];
-          primaryPortId = yPorts[snapInfo.ghostPortIndex % 3];
-        } else if (type === 'X_TRACK' || type === 'CROSS_90') {
-          const xPorts = ['a_start', 'b_start'];
-          primaryPortId = xPorts[snapInfo.ghostPortIndex % 2];
-        }
-        initialConnections[primaryPortId] = snapInfo.parentId;
-      }
-
-      const newTrack = {
-        id: newId,
-        type,
-        isLeft: isLeftOverride,
-        position,
-        rotation,
-        geometry,
-        connections: initialConnections
-      };
-
-      return [...updatedTracks, newTrack];
-    });
-  };
+    },
+    []
+  );
 
   return { tracks, setTracks, addTrack, deleteTrack, updateTrackGeometry };
 };
