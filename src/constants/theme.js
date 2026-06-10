@@ -28,13 +28,13 @@ export const trackColors = {
 export const trackModelStyle = {
   roughness: 0.4, // smooth plastic reflection
   metalness: 0.0, // non-metallic
-  opacity: 0.4,
+  opacity: 1,
   ghostOpacity: 0.5,
 };
 
 // Rendering of the mathematical path lines on top of the models.
 export const trackLineStyle = {
-  visible: true,
+  visible: false,
   width: 5,
   selectedWidth: 6,
 };

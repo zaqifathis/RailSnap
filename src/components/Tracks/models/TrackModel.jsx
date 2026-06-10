@@ -42,20 +42,22 @@ export const TrackModel = forwardRef(
 
     return (
       <group {...props} dispose={null}>
+        {/* No material prop: the child material is the only one, so swapping
+            models (curved left/right) can never fall back to the raw GLB look. */}
         <mesh
+          key={config.url}
           ref={ref}
           raycast={raycast}
           name={config.node}
           castShadow
           receiveShadow
           geometry={mainNode.geometry}
-          material={mainNode.material}
         >
           <meshStandardMaterial
             color={getMaterialColor({ isOccupied, isSnapped, isSelected })}
             roughness={trackModelStyle.roughness}
             metalness={trackModelStyle.metalness}
-            transparent
+            transparent={isGhost}
             opacity={isGhost ? trackModelStyle.ghostOpacity : trackModelStyle.opacity}
           />
         </mesh>
